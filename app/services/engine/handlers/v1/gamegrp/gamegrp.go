@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,20 +27,21 @@ import (
 
 // Handlers manages the set of user endpoints.
 type Handlers struct {
-	Converter   *currency.Converter
-	Bank        *bank.Bank
-	Log         *zap.SugaredLogger
-	WS          websocket.Upgrader
-	Evts        *events.Events
-	Auth        *auth.Auth
-	BankTimeout time.Duration
+	Converter      *currency.Converter
+	Bank           *bank.Bank
+	Log            *zap.SugaredLogger
+	WS             websocket.Upgrader
+	Evts           *events.Events
+	Auth           *auth.Auth
+	BankTimeout    time.Duration
+	ConnectTimeout time.Duration
 
 	mu sync.RWMutex
 }
 
 // Connect is used to return a game token for API usage.
 func (h *Handlers) Connect(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	address, err := validateSignature(r)
+	address, err := validateSignature(r, h.ConnectTimeout)
 	if err != nil {
 		return v1Web.NewRequestError(err, http.StatusBadRequest)
 	}
@@ -199,8 +201,9 @@ func (h *Handlers) Test(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 // =============================================================================
 
-func validateSignature(r *http.Request) (string, error) {
+func validateSignature(r *http.Request, timeout time.Duration) (string, error) {
 	var dt struct {
+		Address   string `json:"address"`
 		DateTime  string `json:"dateTime"` // YYYYMMDDHHMMSS
 		Signature string `json:"sig"`
 	}
@@ -209,15 +212,30 @@ func validateSignature(r *http.Request) (string, error) {
 		return "", fmt.Errorf("unable to decode payload: %w", err)
 	}
 
+	t, err := time.Parse("20060102150405", dt.DateTime)
+	if err != nil {
+		return "", fmt.Errorf("parse time: %w", err)
+	}
+
+	if d := time.Since(t); d > timeout {
+		return "", fmt.Errorf("data is too old, %v", d.Seconds())
+	}
+
 	data := struct {
+		Address  string `json:"address"`
 		DateTime string `json:"dateTime"`
 	}{
+		Address:  dt.Address,
 		DateTime: dt.DateTime,
 	}
 
 	address, err := ethereum.FromAddress(data, dt.Signature)
 	if err != nil {
 		return "", fmt.Errorf("unable to extract address: %w", err)
+	}
+
+	if !strings.EqualFold(strings.ToLower(address), strings.ToLower(data.Address)) {
+		return "", fmt.Errorf("invalid address match, got[%s] exp[%s]", address, data.Address)
 	}
 
 	return address, nil
@@ -227,7 +245,7 @@ func generateToken(a *auth.Auth, address string) (string, error) {
 	claims := auth.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   address,
-			Issuer:    "service project",
+			Issuer:    "bets project",
 			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
 		},

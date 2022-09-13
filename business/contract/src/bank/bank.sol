@@ -5,22 +5,14 @@ import "./error.sol";
 
 contract Bank {
 
-    struct Game {
-        address Player1;
-        address Player2;
-        string  Description;
-        uint256 Bet;
-        uint    Deadline; // Number of day from time game is created.
-    }
-
     // Owner represents the address who deployed the contract.
     address public Owner;
 
     // accountBalances represents the amount of money an account has available.
     mapping (address => uint256) private accountBalances;
 
-    // games represents a unique game id and the game information.
-    mapping (uint64 => Game) private games;
+    // amountBet represents the amount of money that has been bet.
+    mapping (address => uint256) private amountBet;
 
     // EventLog provides support for external logging.
     event EventLog(string value);
@@ -41,50 +33,17 @@ contract Bank {
         _;
     }
 
+    // PlaceBet moves money from accountBalances to amountBet.
+    function PlaceBet(address person, uint256 amount, uint256 fee) onlyOwner public {
+    }
+
     // Reconcile settles the accounting for a game that was played.
-    function Reconcile(address loser, uint256 amount, uint256 gameFeeWei) public {
-
-        // Add the ante for each player to the pot. The initialization is
-        // for the winner's ante.
-        uint256 pot = anteWei;
-        for (uint i = 0; i < losers.length; i++) {
-            if (accountBalances[losers[i]] < anteWei) {
-                emit EventLog(string.concat("account balance ", Error.Itoa(accountBalances[losers[i]]), " is less than ante ", Error.Itoa(anteWei)));
-                pot += accountBalances[losers[i]];
-                accountBalances[losers[i]] = 0;                
-            } else {
-                pot += anteWei;
-                accountBalances[losers[i]] -= anteWei;
-            }
-        }
-
-        emit EventLog(string.concat("ante[", Error.Itoa(anteWei), "] gameFee[", Error.Itoa(gameFeeWei), "] pot[", Error.Itoa(pot), "]"));
-
-        // This should not happen but check to see if the pot is 0 because none
-        // of the losers had an account balance.
-        if (pot == 0) {
-            revert("no pot was created based on account balances");
-        }
-
-        // This should not happen but check there is enough in the pot to cover
-        // the game fee.
-        if (pot < gameFeeWei) {
-            accountBalances[Owner] += pot;
-            emit EventLog(string.concat("pot less than fee: winner[0] owner[", Error.Itoa(pot), "]"));
-            return;
-        }
-
-        // Take the game fee from the pot and give the winner the remaining pot
-        // and the owner the game fee.
-        pot -= gameFeeWei;
-        accountBalances[winner] += pot;
-        accountBalances[Owner] += gameFeeWei;
-        emit EventLog(string.concat("winner[", Error.Itoa(pot), "] owner[", Error.Itoa(gameFeeWei), "]"));
+    function Reconcile(address winner, address loser, uint256 amount, uint256 fee) onlyOwner public {
     }
 
     // AccountBalance returns the current account's balance.
-    function AccountBalance(address account) onlyOwner view public returns (uint) {
-        return accountBalances[account];
+    function AccountBalance(address account) onlyOwner view public returns (uint[2] memory) {
+        return [accountBalances[account], amountBet[msg.sender]];
     }
 
     // =========================================================================
@@ -92,7 +51,7 @@ contract Bank {
 
     // Balance returns the balance of the caller.
     function Balance() view public returns (uint) {
-        return accountBalances[msg.sender];
+        return accountBalances[msg.sender] - amountBet[msg.sender];
     }
 
     // Deposit the given amount to the account balance.
@@ -101,18 +60,21 @@ contract Bank {
         emit EventLog(string.concat("deposit[", Error.Addrtoa(msg.sender), "] balance[", Error.Itoa(accountBalances[msg.sender]), "]"));
     }
 
-    // Withdraw the given amount from the account balance.
+    // Withdraw all of the available balance from the account.
     function Withdraw() payable public {
         address payable account = payable(msg.sender);
 
-        if (accountBalances[msg.sender] == 0) {
+        // IF AMOUNT BET IS > BALANCE REVERT
+        // WE DON'T WANT THE UNSIGNED INT TO ROLLOVER
+
+        uint bal = accountBalances[msg.sender] - amountBet[msg.sender];
+        if (bal == 0) {
             revert("not enough balance");
         }
 
-        uint256 amount = accountBalances[msg.sender];
-        account.transfer(amount);        
-        accountBalances[msg.sender] = 0;
+        account.transfer(bal);        
+        accountBalances[msg.sender] -= bal;
 
-        emit EventLog(string.concat("withdraw[", Error.Addrtoa(msg.sender), "] amount[", Error.Itoa(amount), "]"));
+        emit EventLog(string.concat("withdraw[", Error.Addrtoa(msg.sender), "] amount[", Error.Itoa(bal), "]"));
     }
 }
