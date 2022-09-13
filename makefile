@@ -43,6 +43,12 @@ game-up:
 	go run app/services/engine/main.go | go run app/tooling/logfmt/main.go
 
 # ==============================================================================
+# Database Up
+
+db-up:
+	docker run --name postgres -e POSTGRES_PASSWORD=postgres postgres:14-alpine
+
+# ==============================================================================
 # These commands build and deploy basic smart contract.
 
 # This will compile the smart contract and produce the binary code. Then with the
