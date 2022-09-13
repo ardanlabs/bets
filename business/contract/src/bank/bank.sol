@@ -5,11 +5,22 @@ import "./error.sol";
 
 contract Bank {
 
+    struct Game {
+        address Player1;
+        address Player2;
+        string  Description;
+        uint256 Bet;
+        uint    Deadline; // Number of day from time game is created.
+    }
+
     // Owner represents the address who deployed the contract.
     address public Owner;
 
     // accountBalances represents the amount of money an account has available.
     mapping (address => uint256) private accountBalances;
+
+    // games represents a unique game id and the game information.
+    mapping (uint64 => Game) private games;
 
     // EventLog provides support for external logging.
     event EventLog(string value);
@@ -31,7 +42,7 @@ contract Bank {
     }
 
     // Reconcile settles the accounting for a game that was played.
-    function Reconcile(address winner, address[] calldata losers, uint256 anteWei, uint256 gameFeeWei) onlyOwner public {
+    function Reconcile(address loser, uint256 amount, uint256 gameFeeWei) public {
 
         // Add the ante for each player to the pot. The initialization is
         // for the winner's ante.
