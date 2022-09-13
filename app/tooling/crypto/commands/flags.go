@@ -11,27 +11,29 @@ import (
 
 const usage = `
 Usage:
-	admin -d
-	admin -w 0x8e113078adf6888b7ba84967f299f29aece24c55
-	admin -b 0x8e113078adf6888b7ba84967f299f29aece24c55 -c 0x531130464929826c57BBBF989e44085a02eeB120
-	admin -a 0x8e113078adf6888b7ba84967f299f29aece24c55 -m 1000.00 -c 0x531130464929826c57BBBF989e44085a02eeB120
-	admin -r 0x8e113078adf6888b7ba84967f299f29aece24c55 -c 0x531130464929826c57BBBF989e44085a02eeB120
-	admin -t 0x46e40587966f02f5dff2cc63d3ff29a01e963a5360cf05094b54ad9dbc230dd3
+	crypto -d
+	crypto -w 0x8e113078adf6888b7ba84967f299f29aece24c55
+	crypto -b 0x8e113078adf6888b7ba84967f299f29aece24c55 -c 0x531130464929826c57BBBF989e44085a02eeB120
+	crypto -a 0x8e113078adf6888b7ba84967f299f29aece24c55 -m 1000.00 -c 0x531130464929826c57BBBF989e44085a02eeB120
+	crypto -r 0x8e113078adf6888b7ba84967f299f29aece24c55 -c 0x531130464929826c57BBBF989e44085a02eeB120
+	crypto -t 0x46e40587966f02f5dff2cc63d3ff29a01e963a5360cf05094b54ad9dbc230dd3
 
 Options:
-	-d, --deploy     Deploy the smart contract.
-	-b, --balance    Show the smart contract balance.
-	-w, --wallet     Show the wallet balance.
-	-a, --addmoney   Deposit USD into the game contract.
-	-r, --rmvmoney   Withdraw money from the game contract.
-	-t, --tx         Show transaction details for the specified transaction hash.
+	Wallet related commands:
+		-d, --deploy            Deploy the smart contract.
+		-b, --balance <id>      Show the smart contract balance.
+		-w, --wallet <id>       Show the wallet balance.
+		-a, --addmoney <id>     Deposit USD into the game contract.
+		-r, --rmvmoney <id>     Withdraw money from the game contract.
+		-t, --tx <hash>         Show transaction details for the specified transaction hash.
 	
-	-c, --contract   Provides the contract id for required calls.
-	-m, --money      Sets the amount of USD to use.
-	-n, --network    Sets the network to use. Default: zarf/ethereum/geth.ipc
-	-f, --filekey    Sets the private key file to use for blockchain calls. Default: 0x6327a38415c53ffb36c11db55ea74cc9cb4976fd
-	-p, --passphrase Sets the pass phrase for the key file. Default: 123
-	-k, --keycoin    Sets the key for the coin market cap API. Default: a8cd12fb-d056-423f-877b-659046af0aa5
+	These are flags that provide extra information or change defaults:
+		-c, --contract <id>     Provides the contract id for required calls.
+		-m, --money <amount>    Sets the amount of USD to use.
+		-n, --network <url>     Sets the network to use. Default: zarf/ethereum/geth.ipc
+		-f, --filekey <path>    Sets the private key file to use for blockchain calls. Default: 0x6327a38415c53ffb36c11db55ea74cc9cb4976fd
+		-p, --passphrase <pass> Sets the pass phrase for the key file. Default: 123
+		-k, --keycoin <id>      Sets the key for the coin market cap API. Default: a8cd12fb-d056-423f-877b-659046af0aa5
 
 	-h. --help       Show the usage information.
 `
@@ -121,6 +123,8 @@ func parseCmdline(args *Args) Flags {
 	flag.Bool("help", false, "")
 	flag.Bool("d", false, "")
 	flag.Bool("deploy", false, "")
+	flag.Bool("s", false, "")
+	flag.Bool("sql", false, "")
 
 	flag.Parse()
 

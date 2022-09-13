@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ardanlabs/bets/app/tooling/admin/commands"
+	"github.com/ardanlabs/bets/app/tooling/crypto/commands"
 	"github.com/ardanlabs/bets/business/core/bank"
 	"github.com/ardanlabs/ethereum/currency"
 )
