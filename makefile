@@ -42,6 +42,12 @@ dev.update:
 game-up:
 	go run app/services/engine/main.go | go run app/tooling/logfmt/main.go
 
+react-install:
+	yarn --cwd app/services/game/ install
+
+game-gui: react-install
+	yarn --cwd app/services/game/ start
+
 # ==============================================================================
 # Database Up
 
@@ -106,6 +112,9 @@ test-engine:
 	go test ./... -count=1
 	staticcheck -checks=all ./...
 	govulncheck ./...
+
+test-gui:
+	yarn --cwd app/services/game/ test
 
 # ==============================================================================
 # Modules support
