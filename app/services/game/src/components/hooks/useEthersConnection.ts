@@ -10,7 +10,9 @@ import { EthersContext } from '../../contexts/ethersContext'
 
 function useEthersConnection() {
   const { ethersConnection, setEthersConnection } = useContext(EthersContext)
-  const provider = new ethers.providers.Web3Provider(window.ethereum, 'any')
+  const provider = window.ethereum
+    ? new ethers.providers.Web3Provider(window.ethereum, 'any')
+    : ethers.getDefaultProvider()
 
   // Signer setter.
   function setSigner(signer: Signer) {

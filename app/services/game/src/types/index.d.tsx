@@ -21,3 +21,34 @@ export interface AddEthereumChainParameter {
   blockExplorerUrls?: string[]
   iconUrls?: string[] // Currently ignored.
 }
+
+export interface BetsFilter {
+  status: string
+  placer: string
+  challenger: string
+  expirationDate: string
+}
+
+export interface Bet {
+  id: number
+  description: string
+  terms: string
+  name: string
+  challengerAddress: string
+  expirationDate: string
+  amount: number
+}
+
+export interface DefaultDoc {
+  address: string
+  dateTime: string
+  betId: number
+}
+
+export interface SetWinnerDoc extends DefaultDoc {
+  winnerAddress: string
+}
+
+export interface SetModeratorDoc extends DefaultDoc {
+  moderatorAddress: string
+}
