@@ -1,3 +1,9 @@
+/* ************useGameHook************
+
+  This hook provides all functions needed to connect to the game engine.
+
+**************************************** */
+
 import axios, { AxiosError } from 'axios'
 import { getAppConfig } from '../..'
 import { connectResponse } from '../../types/responses.d'

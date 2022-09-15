@@ -1,71 +1,34 @@
-import React, { useEffect } from 'react'
-import useWebSocket from './hooks/useWebSocket'
-import { token } from '../utils/axiosConfig'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { appConfig } from '../types/index.d'
-import useEthersConnection from './hooks/useEthersConnection'
+import React, { useEffect, useState } from 'react'
+import { Bet, BetsFilter } from '../types/index.d'
+import useApp from './hooks/useApp'
 
 // MainRoom component
 function MainRoom() {
-  // Extracts navigate from useNavigate Hook.
-  const navigate = useNavigate()
-
-  // Extracts state (a prop send by the router) from useLocation Hook.
-  const { state } = useLocation()
-
-  // Extracts account from ethersConnection Hook.
-  const { account } = useEthersConnection()
-
-  // Extracts function to connect to ws (connect) from useWebSocket Hook.
-  const { connect } = useWebSocket(() => {})
-
   // Variable to set the notification center width.
   const notificationCenterWidth = '340px'
 
-  const wsStatus = window.sessionStorage.getItem('wsStatus')
+  // Creates a localState to handle bets with the useState hook.
+  const [bet, setBet] = useState<JSX.Element>()
 
-  // ===========================================================================
+  // Extracts getBets from useApp hook.
+  const { getBet } = useApp()
 
-  // initUEFn connects the websocket, clears the round timer and
-  // sets Player dice if needed.
-  const initUEFn = () => {
-    // Connects to websocket depending on status.
-    function connectToWs() {
-      connect().then(() => {
-        window.sessionStorage.setItem('wsStatus', 'open')
-      })
+  const [filters, setFilters] = useState({} as BetsFilter)
+
+  const initEFn = () => {
+    const getBetsFn = (response: Bet) => {
+      setBet(
+        <li role="bet" key={response.name}>
+          {response.name}
+        </li>,
+      )
     }
-    if (wsStatus !== 'open' && wsStatus !== 'attemptingConnection') {
-      window.sessionStorage.setItem('wsStatus', 'attemptingConnection')
-      connectToWs()
-    }
-    window.sessionStorage.setItem('wsStatus', 'close')
+
+    getBet(1).then(getBetsFn)
   }
 
-  // An empty dependecies array triggers useEffect only on the first render of the component
-  // We disable the next line so eslint doens't complain about missing dependencies.
-  // eslint-disable-next-line
-  useEffect(initUEFn, [])
-
-  // ===========================================================================
-
-  const authUEFn = () => {
-    // Handles if the user is logged and has a token.
-    // If not, we redirect it to the login page. (<Login />)
-    function checkAuth() {
-      if (!account || !token() || !(state as appConfig)) {
-        navigate('/')
-      }
-    }
-
-    checkAuth()
-  }
-
-  // eslint-disable-next-line
-  useEffect(authUEFn, [account, state])
-
-  //
-  // ===============================Finish Timer================================
+  // initial useEffect hook.
+  useEffect(initEFn, [])
 
   // Renders this final markup
   return (
@@ -80,7 +43,9 @@ function MainRoom() {
             zIndex: '1',
           }}
           className="d-flex flex-column align-items-center justify-content-start"
-        ></section>
+        >
+          <ul role="openBets">{bet}</ul>
+        </section>
       </div>
     </div>
   )
