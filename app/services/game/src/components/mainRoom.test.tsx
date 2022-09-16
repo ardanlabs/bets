@@ -18,18 +18,24 @@ const bets: Bet[] = [
   },
 ]
 
+const resolver = jest.fn()
 const handlers = [
   // Get bets mock request
-  rest.get(`http://${apiUrl}/bets`, (req, res, ctx) => {
+  rest.get(`http://${apiUrl}/bets`, (_, res, ctx) => {
     return res(ctx.json(bets))
   }),
   // Get bet mock request
-  rest.get(`http://${apiUrl}/bet/${bets[0].id}`, (req, res, ctx) => {
-    return res(ctx.json(bets[0]))
+  rest.get(`http://${apiUrl}/bet/${bets[0].id}`, (_, res, ctx) => {
+    return res(ctx.status(200), ctx.json(bets[0]))
+  }),
+  // Post bet mock request
+  rest.post(`http://${apiUrl}/bet`, (req, res, ctx) => {
+    resolver
+    return res(ctx.status(200), ctx.json({ betId: bets[0].id }))
   }),
 ]
 
-const server = setupServer(handlers[1])
+const server = setupServer(...handlers)
 beforeAll(() => {
   // Establish requests interception layer before all tests.
   server.listen()
@@ -44,9 +50,9 @@ afterAll(() => {
 test('Gets bets from mocked API', async () => {
   render(<MainRoom />)
 
-  const out = await waitFor(() => screen.getByRole('openBets'))
-  const li = await waitFor(() => screen.getByRole('bet'))
+  const out = await waitFor(() => screen.getByRole('betId'))
+  await waitFor(resolver)
 
-  expect(out).toContainElement(li)
-  expect(li).toHaveTextContent(bets[0].name)
+  expect(out).toHaveTextContent('1')
+  expect(resolver).toBeCalledTimes(1)
 })
