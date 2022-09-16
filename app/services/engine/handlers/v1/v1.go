@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ardanlabs/bets/app/services/engine/handlers/v1/brunogrp"
 	"github.com/ardanlabs/bets/app/services/engine/handlers/v1/gamegrp"
 	"github.com/ardanlabs/bets/business/core/bank"
 	"github.com/ardanlabs/bets/business/web/auth"
@@ -46,16 +47,17 @@ func Routes(app *web.App, cfg Config) {
 	}
 
 	app.Handle(http.MethodPost, version, "/game/connect", ggh.Connect)
-
 	app.Handle(http.MethodGet, version, "/game/events", ggh.Events)
 	app.Handle(http.MethodGet, version, "/game/config", ggh.Configuration)
 	app.Handle(http.MethodGet, version, "/game/usd2wei/:usd", ggh.USD2Wei)
-	app.Handle(http.MethodGet, version, "/bruno/bets/:page/:rows", ggh.Query)
-	app.Handle(http.MethodGet, version, "/bruno/bet/:id", ggh.QueryByID)
-	app.Handle(http.MethodPost, version, "/bruno/bet/:id", ggh.Create)
-	app.Handle(http.MethodPost, version, "/bruno/signBet", ggh.SignBet)
-	app.Handle(http.MethodPost, version, "/bruno/acceptMod", ggh.AcceptMod)
-	
-
 	app.Handle(http.MethodGet, version, "/game/test", ggh.Test, mid.Authenticate(cfg.Log, cfg.Auth))
+
+	var bgh brunogrp.Handlers
+
+	app.Handle(http.MethodGet, version, "/bruno/bets/:page/:rows", bgh.Query)
+	app.Handle(http.MethodGet, version, "/bruno/bet/:id", bgh.QueryByID)
+	app.Handle(http.MethodPost, version, "/bruno/bet/:id", bgh.Create)
+	app.Handle(http.MethodPost, version, "/bruno/signBet", bgh.SignBet)
+	app.Handle(http.MethodPost, version, "/bruno/acceptMod", bgh.AcceptMod)
+
 }
