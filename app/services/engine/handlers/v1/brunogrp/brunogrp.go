@@ -17,6 +17,7 @@ func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Req
 	type Bet struct {
 		ID                int    `json:"id"`
 		Description       string `json:"description"`
+		Status						string `json:"status"`
 		Terms             string `json:"terms"`
 		Name              string `json:"name"`
 		ChallengerAddress string `json:"challengerAddress"`

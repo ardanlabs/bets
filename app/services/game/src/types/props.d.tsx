@@ -46,3 +46,8 @@ export interface PlayersListProps {
 export interface SideBarProps {
   notificationCenterWidth: string
 }
+
+export interface SubtitleProps {
+  showSearch: boolean
+  text: string
+}

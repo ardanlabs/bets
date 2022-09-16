@@ -1,3 +1,9 @@
+/* Metamask font */
+@import url(//db.onlinewebfonts.com/c/721c73bcd2e49f3a621991089838b503?family=Euclid+Circular+B+Medium);
+/* Roboto condensed */
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap');
+
+
 :root {
   /* Global variables */
   --outer-box-heigth: 740px;
@@ -6,20 +12,29 @@
   --ternary-color: #EFEFEF;
   --modals: #F0EAD6;
   --borders: #00284d;
+  --main-bg-color: #EFEFEF;
+  --text-color: #000000;
+  --bets-color: #FFFFFF;
+  --status-open-box: #FFF384;
+  --status-open-text: #D8A504;
+  --onGoingBet-title-color: #515151;
   box-sizing: border-box;
   overflow: hidden;
 }
 
 #root {
   overflow-y: hidden;
+  height: 100%;
 }
 
+html,
 body {
+  height: 100%;
   margin: 0;
   font-family: 'Robot Condensed';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--borders);
+  background-color: var(--main-bg-color);
 }
 
 code {
