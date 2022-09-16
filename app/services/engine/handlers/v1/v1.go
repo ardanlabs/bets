@@ -50,6 +50,12 @@ func Routes(app *web.App, cfg Config) {
 	app.Handle(http.MethodGet, version, "/game/events", ggh.Events)
 	app.Handle(http.MethodGet, version, "/game/config", ggh.Configuration)
 	app.Handle(http.MethodGet, version, "/game/usd2wei/:usd", ggh.USD2Wei)
+	app.Handle(http.MethodGet, version, "/bruno/bets/:page/:rows", ggh.Query)
+	app.Handle(http.MethodGet, version, "/bruno/bet/:id", ggh.QueryByID)
+	app.Handle(http.MethodPost, version, "/bruno/bet/:id", ggh.Create)
+	app.Handle(http.MethodPost, version, "/bruno/signBet", ggh.SignBet)
+	app.Handle(http.MethodPost, version, "/bruno/acceptMod", ggh.AcceptMod)
+	
 
 	app.Handle(http.MethodGet, version, "/game/test", ggh.Test, mid.Authenticate(cfg.Log, cfg.Auth))
 }
