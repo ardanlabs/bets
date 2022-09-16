@@ -13,7 +13,7 @@ function Button(props: ButtonProps) {
       type="button"
       style={{ cursor: 'pointer', ...style }}
       id={id}
-      className={`${classes} btn btn-block`}
+      className={`btn btn-block ${classes ? classes : ''} `}
       disabled={disabled}
       onClick={() => clickHandler(id)}
     >

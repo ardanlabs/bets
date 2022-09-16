@@ -1,3 +1,5 @@
+import { CSSProperties } from 'react'
+
 require('responses.d')
 require('props.d')
 
@@ -31,6 +33,8 @@ export interface BetsFilter {
 
 export interface Bet {
   id: number
+  status: string
+  placerAddress: string
   description: string
   terms: string
   name: string
@@ -51,4 +55,8 @@ export interface SetWinnerDoc extends DefaultDoc {
 
 export interface SetModeratorDoc extends DefaultDoc {
   moderatorAddress: string
+}
+
+export interface StyleObject {
+  [key: string]: CSSProperties
 }

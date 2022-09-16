@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import Button from './button'
+import Button from './Button'
 import MetamaskLogo from './icons/metamask'
 import getNowDate from '../utils/getNowDate'
 import { useNavigate } from 'react-router-dom'

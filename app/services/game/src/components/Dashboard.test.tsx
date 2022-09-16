@@ -2,18 +2,20 @@ import React from 'react'
 import { rest } from 'msw'
 import { setupServer } from 'msw/node'
 import { render, screen, waitFor } from '@testing-library/react'
-import MainRoom from './mainRoom'
+import Dashboard from './Dashboard'
 import { apiUrl } from '../utils/axiosConfig'
 import { Bet } from '../types/index.d'
 
 const bets: Bet[] = [
   {
     id: 1,
+    status: 'open',
     description: 'In 2022 there will be 2000 electric cars accidents',
     terms: 'Has to be in the us.',
     name: 'Bruno',
+    placerAddress: '0x8E113078ADF6888B7ba84967F299F29AeCe24c55',
     challengerAddress: '0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7',
-    expirationDate: '20221231000000',
+    expirationDate: 'Fri Sep 16 2022',
     amount: 30,
   },
 ]
@@ -48,7 +50,7 @@ afterAll(() => {
 })
 
 test('Gets bets from mocked API', async () => {
-  render(<MainRoom />)
+  render(<Dashboard />)
 
   const out = await waitFor(() => screen.getByRole('betId'))
   await waitFor(resolver)

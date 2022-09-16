@@ -10,10 +10,10 @@ import {
   ethersContextInterface,
 } from './contexts/ethersContext'
 import useEthersConnection from './components/hooks/useEthersConnection'
-import WrongNetwork from './components/wrongNetwork'
+import WrongNetwork from './components/WrongNetwork'
 import { Network } from '@ethersproject/networks'
-import Login from './components/login'
-import MainRoom from './components/mainRoom'
+import Login from './components/Login'
+import Dashboard from './components/Dashboard'
 
 // =============================================================================
 
@@ -91,8 +91,8 @@ function App() {
     >
       <EthersContext.Provider value={getEthersContextDefaultValue()}>
         <Routes>
-          <Route path="/" element={<Login />}></Route>
-          <Route path="/mainroom" element={<MainRoom />}></Route>
+          <Route path="/" element={<Dashboard />}></Route>
+          <Route path="/login" element={<Login />}></Route>
           <Route path="/wrongNetwork" element={<WrongNetwork />}></Route>
         </Routes>
       </EthersContext.Provider>
