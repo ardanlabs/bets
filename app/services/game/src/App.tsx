@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import './App.css'
+import './App.scss'
 import { appConfig } from './types/index.d'
 import { Route, Routes, useNavigate } from 'react-router-dom'
 import { getAppConfig } from '.'
@@ -10,10 +10,10 @@ import {
   ethersContextInterface,
 } from './contexts/ethersContext'
 import useEthersConnection from './components/hooks/useEthersConnection'
-import WrongNetwork from './components/WrongNetwork'
+import WrongNetwork from './routes/WrongNetwork'
 import { Network } from '@ethersproject/networks'
-import Login from './components/Login'
-import Dashboard from './components/Dashboard'
+import Dashboard from './routes/Dashboard'
+import BetDetail from './routes/BetDetail'
 
 // =============================================================================
 
@@ -92,7 +92,7 @@ function App() {
       <EthersContext.Provider value={getEthersContextDefaultValue()}>
         <Routes>
           <Route path="/" element={<Dashboard />}></Route>
-          <Route path="/login" element={<Login />}></Route>
+          <Route path="/bet/:betId" element={<BetDetail />}></Route>
           <Route path="/wrongNetwork" element={<WrongNetwork />}></Route>
         </Routes>
       </EthersContext.Provider>

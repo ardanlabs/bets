@@ -34,11 +34,11 @@ export interface BetsFilter {
 export interface Bet {
   id: number
   status: string
-  placerAddress: string
+  placer: string
+  moderator: string
   description: string
   terms: string
-  name: string
-  challengerAddress: string
+  challenger: string
   expirationDate: string
   amount: number
 }
