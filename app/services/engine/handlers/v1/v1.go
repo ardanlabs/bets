@@ -54,10 +54,10 @@ func Routes(app *web.App, cfg Config) {
 
 	var bgh brunogrp.Handlers
 
-	app.Handle(http.MethodGet, version, "/bruno/bets/:page/:rows", bgh.Query)
-	app.Handle(http.MethodGet, version, "/bruno/bet/:id", bgh.QueryByID)
-	app.Handle(http.MethodPost, version, "/bruno/bet/:id", bgh.Create)
-	app.Handle(http.MethodPost, version, "/bruno/signBet", bgh.SignBet)
-	app.Handle(http.MethodPost, version, "/bruno/acceptMod", bgh.AcceptMod)
+	app.Handle(http.MethodGet, version, "/game/bruno/bets/:page/:rows", bgh.Query)
+	app.Handle(http.MethodGet, version, "/game/bruno/bet/:id", bgh.QueryByID)
+	app.Handle(http.MethodPost, version, "/game/bruno/bet/:id", bgh.Create)
+	app.Handle(http.MethodPost, version, "/game/bruno/signBet", bgh.SignBet)
+	app.Handle(http.MethodPost, version, "/game/bruno/acceptMod", bgh.AcceptMod)
 
 }

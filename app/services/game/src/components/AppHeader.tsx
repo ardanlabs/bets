@@ -1,16 +1,21 @@
-import React, { MouseEvent } from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { StyleObject } from '../types/index.d'
 import Button from './Button'
+import EditBet from './EditBet'
+import useEthersConnection from './hooks/useEthersConnection'
+import Login from './Login'
+import Modal from './modal/Modal'
 
 // AppHeader renders the application header
 function AppHeader() {
-  function handleBetClick(event: MouseEvent<HTMLButtonElement>) {
-    console.log(event)
-  }
-  function handleSingInClick(event: MouseEvent<HTMLButtonElement>) {
-    console.log(event)
-  }
+  // We create a local state to handle if the modals are shown or not
+  const [addBetModal, setAddBetModal] = useState(false)
+  const [loginModal, setLoginModal] = useState(false)
+
+  // Extracts the account from useEthersConnection hook
+  const { account } = useEthersConnection()
+  // ===========================================================================
 
   const headerHeight = '67px'
 
@@ -58,6 +63,7 @@ function AppHeader() {
     button: {
       margin: '0',
       width: 'auto',
+      textDecoration: 'unset',
     },
     text: {
       color: 'var(--text-color)',
@@ -79,27 +85,50 @@ function AppHeader() {
           clickHandler={() => {}}
           style={{ ...styles.button, ...styles.text }}
         >
-          <Link to={'/dashboard'}>
+          <Link to={'/'}>
             <span style={styles.text}>Dashboard</span>
           </Link>
         </Button>
-        <Button
-          classes={'btn-link'}
-          style={{ ...styles.button, ...styles.text }}
-          clickHandler={handleBetClick}
+        <Modal
+          show={addBetModal}
+          setShow={setAddBetModal}
+          trigger={
+            <Button
+              classes={'btn-link'}
+              style={{ ...styles.button, ...styles.text }}
+              clickHandler={() => {}}
+            >
+              Make a bet
+            </Button>
+          }
+          subtitle="Add bet"
         >
-          Make a bet
-        </Button>
+          {account ? (
+            <EditBet hideModalMethod={setAddBetModal} />
+          ) : (
+            <Login hideModalMethod={setAddBetModal} />
+          )}
+        </Modal>
       </div>
-      <div style={styles.secondRow}>
-        <Button
-          classes={'btn-link'}
-          style={{ ...styles.button, ...styles.text }}
-          clickHandler={handleSingInClick}
-        >
-          Sign in
-        </Button>
-      </div>
+      {account ? null : (
+        <div style={styles.secondRow}>
+          <Modal
+            show={loginModal}
+            setShow={setLoginModal}
+            trigger={
+              <Button
+                classes={'btn-link'}
+                style={{ ...styles.button, ...styles.text }}
+                clickHandler={() => {}}
+              >
+                Sign in
+              </Button>
+            }
+          >
+            <Login hideModalMethod={setAddBetModal} />
+          </Modal>
+        </div>
+      )}
     </header>
   )
 }

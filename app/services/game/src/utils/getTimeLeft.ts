@@ -1,11 +1,13 @@
 // getTimeLeft returns how many days, months and years are left
 function getTimeLeft(expirationDate: string) {
-  const yearsLeft =
-    new Date(expirationDate).getFullYear() - new Date().getFullYear()
-  const daysLeft = new Date(expirationDate).getDate() - new Date().getDate()
-  const monthsLeft = new Date(expirationDate).getMonth() - new Date().getMonth()
+  const date = new Date(expirationDate)
+  const yearsLeft = date.getFullYear() - new Date().getFullYear()
+  const daysLeft = date.getDate() - new Date().getDate()
+  const monthsLeft = date.getMonth() - new Date().getMonth()
 
-  return `${daysLeft} days | ${monthsLeft} months | ${yearsLeft} years`
+  return `${daysLeft > 0 ? `${daysLeft} days` : '-'} | ${
+    monthsLeft > 0 ? `${monthsLeft} months` : '-'
+  } | ${yearsLeft > 0 ? `${yearsLeft} years` : '-'}`
 }
 
 export default getTimeLeft

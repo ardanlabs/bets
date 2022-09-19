@@ -3,20 +3,19 @@
 /* Roboto condensed */
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap');
 
-
 :root {
   /* Global variables */
   --outer-box-heigth: 740px;
-  --primary-color: #F15825;
-  --secondary-color: #35495C;
-  --ternary-color: #EFEFEF;
-  --modals: #F0EAD6;
+  --primary-color: #f15825;
+  --secondary-color: #35495c;
+  --ternary-color: #efefef;
+  --modals: #f0ead6;
   --borders: #00284d;
-  --main-bg-color: #EFEFEF;
+  --main-bg-color: #f0ead6;
   --text-color: #000000;
-  --bets-color: #FFFFFF;
-  --status-open-box: #FFF384;
-  --status-open-text: #D8A504;
+  --bets-color: #ffffff;
+  --status-open-box: #fff384;
+  --status-open-text: #d8a504;
   --onGoingBet-title-color: #515151;
   box-sizing: border-box;
   overflow: hidden;
@@ -81,25 +80,24 @@ code {
   border-radius: 8px;
 }
 
-
 /* Metamask svg */
 .st0 {
-  fill: #E2761B;
-  stroke: #E2761B;
+  fill: #e2761b;
+  stroke: #e2761b;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .st1 {
-  fill: #E4761B;
-  stroke: #E4761B;
+  fill: #e4761b;
+  stroke: #e4761b;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .st2 {
-  fill: #D7C1B3;
-  stroke: #D7C1B3;
+  fill: #d7c1b3;
+  stroke: #d7c1b3;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -112,29 +110,29 @@ code {
 }
 
 .st4 {
-  fill: #CD6116;
-  stroke: #CD6116;
+  fill: #cd6116;
+  stroke: #cd6116;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .st5 {
-  fill: #E4751F;
-  stroke: #E4751F;
+  fill: #e4751f;
+  stroke: #e4751f;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .st6 {
-  fill: #F6851B;
-  stroke: #F6851B;
+  fill: #f6851b;
+  stroke: #f6851b;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .st7 {
-  fill: #C0AD9E;
-  stroke: #C0AD9E;
+  fill: #c0ad9e;
+  stroke: #c0ad9e;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -147,8 +145,54 @@ code {
 }
 
 .st9 {
-  fill: #763D16;
-  stroke: #763D16;
+  fill: #763d16;
+  stroke: #763d16;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.formInputs::placeholder {
+  font-family: Roboto Condensed;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 16px;
+  color: #d2d2d2;
+}
+
+// =============================================================================
+// Boostrap resets
+
+a,
+button {
+  text-decoration: none !important;
+  color: unset !important;
+}
+
+a:hover,
+button:hover {
+  text-decoration: none !important;
+  color: unset !important;
+}
+
+// Reset btn primary color
+.btn-outline-primary {
+  font-family: Roboto Condensed;
+  letter-spacing: 0.35px;
+  color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  border-width: 2px;
+  font-weight: 600;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:active,
+.btn-outline-primary:visited {
+  font-family: Roboto Condensed;
+  letter-spacing: 0.35px;
+  color: #fff !important;
+  border-color: var(--primary-color) !important;
+  background-color: var(--primary-color) !important;
+  border-width: 2px;
+  font-weight: 600;
 }

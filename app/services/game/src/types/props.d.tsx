@@ -1,3 +1,11 @@
+import {
+  AnimationControls,
+  Target,
+  TargetAndTransition,
+  VariantLabels,
+} from 'framer-motion'
+import { Bet, StyleObject } from './index.d'
+
 export interface GameTableProps {
   timer: number
 }
@@ -30,13 +38,17 @@ export interface ButtonProps {
   classes?: string
   id?: string
   disabled?: boolean
-  children: JSX.Element[] | JSX.Element | string
+  children: (JSX.Element | null)[] | JSX.Element | string | null | undefined
   style?: React.CSSProperties
   tooltip?: string
 }
 
 export interface JoinProps {
   disabled?: boolean
+}
+
+export interface LoginProps {
+  hideModalMethod: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 export interface PlayersListProps {
@@ -50,4 +62,34 @@ export interface SideBarProps {
 export interface SubtitleProps {
   showSearch: boolean
   text: string
+}
+
+export interface RoutesWrapperProps {
+  children: (JSX.Element | null)[] | JSX.Element | string | null | undefined
+}
+
+export interface CardProps {
+  children: (JSX.Element | null)[] | JSX.Element | string | null | undefined
+  styleObject?: StyleObject
+  initial?: boolean | Target | VariantLabels
+  animate?: AnimationControls | TargetAndTransition | VariantLabels | boolean
+  exit?: TargetAndTransition | VariantLabels
+  closeMethod?: Function
+  showClose?: boolean
+  subtitle?: string
+}
+
+export interface BetCardProps {
+  bet: Bet
+  styleObject?: StyleObject
+  isDetail: boolean
+}
+
+export interface EditBetProps {
+  bet?: Bet
+  hideModalMethod: React.Dispatch<React.SetStateAction<boolean>>
+}
+
+export interface BetStatusProps {
+  status: string
 }
