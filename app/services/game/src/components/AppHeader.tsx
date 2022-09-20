@@ -4,14 +4,12 @@ import { StyleObject } from '../types/index.d'
 import Button from './Button'
 import EditBet from './EditBet'
 import useEthersConnection from './hooks/useEthersConnection'
-import Login from './Login'
 import Modal from './modal/Modal'
 
 // AppHeader renders the application header
 function AppHeader() {
   // We create a local state to handle if the modals are shown or not
   const [addBetModal, setAddBetModal] = useState(false)
-  const [loginModal, setLoginModal] = useState(false)
 
   // Extracts the account from useEthersConnection hook
   const { account } = useEthersConnection()
@@ -79,7 +77,9 @@ function AppHeader() {
   return (
     <header style={styles.header}>
       <div style={styles.firstRow}>
-        <h1 style={styles.h1}>Ardan's Bets</h1>
+        <Link to={'/'}>
+          <h1 style={styles.h1}>Ardan's Bets</h1>
+        </Link>
         <Button
           classes={'btn-link'}
           clickHandler={() => {}}
@@ -89,44 +89,30 @@ function AppHeader() {
             <span style={styles.text}>Dashboard</span>
           </Link>
         </Button>
-        <Modal
-          show={addBetModal}
-          setShow={setAddBetModal}
-          trigger={
-            <Button
-              classes={'btn-link'}
-              style={{ ...styles.button, ...styles.text }}
-              clickHandler={() => {}}
-            >
-              Make a bet
-            </Button>
-          }
-          subtitle="Add bet"
-        >
-          {account ? (
-            <EditBet hideModalMethod={setAddBetModal} />
-          ) : (
-            <Login hideModalMethod={setAddBetModal} />
-          )}
-        </Modal>
-      </div>
-      {account ? null : (
-        <div style={styles.secondRow}>
+        {account && window.sessionStorage.getItem('token') ? (
           <Modal
-            show={loginModal}
-            setShow={setLoginModal}
+            show={addBetModal}
+            setShow={setAddBetModal}
             trigger={
               <Button
                 classes={'btn-link'}
                 style={{ ...styles.button, ...styles.text }}
                 clickHandler={() => {}}
               >
-                Sign in
+                Make a bet
               </Button>
             }
+            subtitle="Add bet"
           >
-            <Login hideModalMethod={setAddBetModal} />
+            <EditBet hideModalMethod={setAddBetModal} />
           </Modal>
+        ) : null}
+      </div>
+      {account && window.sessionStorage.getItem('token') ? null : (
+        <div style={styles.secondRow}>
+          <Link to={'/login'}>
+            <span style={styles.text}>Sign in</span>
+          </Link>
         </div>
       )}
     </header>

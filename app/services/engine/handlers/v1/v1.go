@@ -58,6 +58,6 @@ func Routes(app *web.App, cfg Config) {
 	app.Handle(http.MethodGet, version, "/game/bruno/bet/:id", bgh.QueryByID)
 	app.Handle(http.MethodPost, version, "/game/bruno/bet/:id", bgh.Create)
 	app.Handle(http.MethodPost, version, "/game/bruno/signBet", bgh.SignBet)
-	app.Handle(http.MethodPost, version, "/game/bruno/acceptMod", bgh.AcceptMod)
+	app.Handle(http.MethodPost, version, "/game/bruno/setWinner", bgh.AcceptMod)
 
 }

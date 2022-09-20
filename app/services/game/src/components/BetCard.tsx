@@ -54,8 +54,6 @@ function BetCard(props: BetCardProps) {
     bet.status !== 'moderate' &&
     (bet.placer === account || bet.challenger === account)
 
-  console.log(bet, account, isDetail)
-
   // Centralized all UI styles in one place for improve in readability.
   const styles: StyleObject = {
     column: {

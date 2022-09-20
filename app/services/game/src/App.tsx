@@ -14,6 +14,7 @@ import WrongNetwork from './routes/WrongNetwork'
 import { Network } from '@ethersproject/networks'
 import Dashboard from './routes/Dashboard'
 import BetDetail from './routes/BetDetail'
+import Login from './routes/Login'
 
 // =============================================================================
 
@@ -65,7 +66,6 @@ function App() {
         })
         return
       }
-      navigate('/')
     }
     getAppConfig.then(fn)
   }
@@ -92,6 +92,7 @@ function App() {
       <EthersContext.Provider value={getEthersContextDefaultValue()}>
         <Routes>
           <Route path="/" element={<Dashboard />}></Route>
+          <Route path="/login" element={<Login />}></Route>
           <Route path="/bet/:betId" element={<BetDetail />}></Route>
           <Route path="/wrongNetwork" element={<WrongNetwork />}></Route>
         </Routes>
