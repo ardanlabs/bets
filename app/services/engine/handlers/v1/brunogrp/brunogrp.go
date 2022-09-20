@@ -101,6 +101,6 @@ func (h *Handlers) SignBet(ctx context.Context, w http.ResponseWriter, r *http.R
 
 // setWinner handles a moderator request to set a winner. Takes the betId,
 // the winner address, and the signature of the mod. Returns the httpStatusCode
-func (h *Handlers) setWinner(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (h *Handlers) SetWinner(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	return web.Respond(ctx, w, nil, http.StatusNoContent)
 }
