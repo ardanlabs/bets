@@ -33,6 +33,15 @@ contract Bank {
         _;
     }
 
+    // Drain will drain the full value of the contract and transfer it to another
+    // contract/wallet address.
+    function Drain(address target) onlyOwner payable public {
+        uint balance = address(this).balance;
+        address payable account = payable(target);
+        account.transfer(balance);
+        emit EventLog(string.concat("transfer[", Error.Itoa(balance), "]"));
+    }
+
     // PlaceBet moves money from accountBalances to amountBet.
     function PlaceBet(address person, uint256 amount, uint256 fee) onlyOwner public {
 
