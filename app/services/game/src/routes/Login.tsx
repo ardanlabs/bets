@@ -1,20 +1,18 @@
 import React, { useEffect, useState } from 'react'
-import Button from './Button'
-import MetamaskLogo from './icons/metamask'
+import Button from '../components/Button'
+import MetamaskLogo from '../components/icons/metamask'
 import getNowDate from '../utils/getNowDate'
 import { useNavigate } from 'react-router-dom'
 import { getAppConfig } from '..'
-import { token } from '../utils/axiosConfig'
-import useEthersConnection from './hooks/useEthersConnection'
+import useEthersConnection from '../components/hooks/useEthersConnection'
 import docToUint8Array from '../utils/docToUint8Array'
-import useConnectEngine from './hooks/useConnectEngine'
-import { LoginProps } from '../types/props.d'
+import useConnectEngine from '../components/hooks/useConnectEngine'
 
 // Login component.
 // Doesn't receives parameters
 // Outputs the Html output for login in.
 // Handles logic for login in and also connecting to the game engine.
-function Login(props: LoginProps) {
+function Login() {
   // ===========================================================================
   // Hooks setup.
 
@@ -81,7 +79,7 @@ function Login(props: LoginProps) {
 
   // loggedUEFn handles what happen if you're already log when you enter the app
   const loggedUEFn = () => {
-    if (token() && account) {
+    if (window.sessionStorage.getItem('token') && account) {
       getAppConfig.then((response) => {
         navigate('/', {
           state: { ...response, reload: true },
@@ -133,39 +131,51 @@ function Login(props: LoginProps) {
 
   // Renders this final markup.
   return (
-    <div style={{ width: '100%', marginBottom: '8px' }}>
-      <h2>
-        <strong> Connect your wallet </strong>
-      </h2>
-      Or you can also select a provider to create one.
-      <div id="wallets__wrapper" className="mt-4">
-        {account && !loading ? (
-          <div className="d-flex">
-            <span className="ml-2 px-2 py-2">Wallet {account} connected</span>
-          </div>
-        ) : (
+    <div
+      className="container-fluid d-flex align-items-center justify-content-center px-0 flex-column"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        height: 'calc(100vh - 70px)',
+      }}
+    >
+      <div
+        id="login__wrapper"
+        className="d-flex align-items-start justify-content-center flex-column mt-10"
+      >
+        <h2>
+          <strong> Connect your wallet </strong>
+        </h2>
+        Or you can also select a provider to create one.
+        <div id="wallets__wrapper" className="mt-4">
+          {account && !loading ? (
+            <div className="d-flex">
+              <span className="ml-2 px-2 py-2">Wallet {account} connected</span>
+            </div>
+          ) : (
+            <Button
+              {...{
+                id: 'metamask__wrapper',
+                clickHandler: handleConnectAccount,
+                classes: 'd-flex align-items-center',
+              }}
+            >
+              <MetamaskLogo {...{ width: '50px', height: '50px' }} />
+              <span className="ml-4"> Metamask </span>
+            </Button>
+          )}
+        </div>
+        <div id="wallets__wrapper" className="mt-4">
           <Button
             {...{
               id: 'metamask__wrapper',
-              clickHandler: handleConnectAccount,
+              clickHandler: signTransaction,
               classes: 'd-flex align-items-center',
             }}
           >
-            <MetamaskLogo {...{ width: '50px', height: '50px' }} />
-            <span className="ml-4"> Metamask </span>
+            <>Sign into app</>
           </Button>
-        )}
-      </div>
-      <div id="wallets__wrapper" className="mt-4">
-        <Button
-          {...{
-            id: 'metamask__wrapper',
-            clickHandler: signTransaction,
-            classes: 'd-flex align-items-center',
-          }}
-        >
-          <>Sign into app</>
-        </Button>
+        </div>
       </div>
     </div>
   )

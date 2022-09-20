@@ -1,78 +1,33 @@
+import axios, { AxiosError, AxiosResponse } from 'axios'
+import { useEffect, useState } from 'react'
 import { Bet, StyleObject } from '../types/index.d'
+import { apiUrl } from '../utils/axiosConfig'
 import BetCard from './BetCard'
 import Subtitle from './Subtitle'
 
 // OnGoingBets component. Displays site public bets.
 function OnGoingBets() {
-  // An array of bets
-  const bets: Bet[] = [
-    {
-      id: 1,
-      status: 'open',
-      placer: '0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC',
-      challenger: '0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7',
-      moderator: '0x39249126d90671284cd06495d19C04DD0e54d371',
-      description: 'In 2022 there will be 2000 electric cars accidents',
-      terms: 'Has to be in the us.',
-      expirationDate: 'Fri Sep 16 2022',
-      amount: 30,
-    },
-    {
-      id: 2,
-      status: 'open',
-      placer: '0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC',
-      challenger: '0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7',
-      moderator: '0x39249126d90671284cd06495d19C04DD0e54d371',
-      description: 'In 2022 there will be 2000 electric cars accidents',
-      terms: 'Has to be in the us.',
-      expirationDate: 'Fri Sep 16 2022',
-      amount: 30,
-    },
-    {
-      id: 3,
-      status: 'open',
-      placer: '0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC',
-      challenger: '0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7',
-      moderator: '0x39249126d90671284cd06495d19C04DD0e54d371',
-      description: 'In 2022 there will be 2000 electric cars accidents',
-      terms: 'Has to be in the us.',
-      expirationDate: 'Fri Sep 16 2022',
-      amount: 30,
-    },
-    {
-      id: 4,
-      status: 'open',
-      placer: '0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC',
-      challenger: '0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7',
-      moderator: '0x39249126d90671284cd06495d19C04DD0e54d371',
-      description: 'In 2022 there will be 2000 electric cars accidents',
-      terms: 'Has to be in the us.',
-      expirationDate: 'Fri Sep 16 2022',
-      amount: 30,
-    },
-    {
-      id: 5,
-      status: 'open',
-      placer: '0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC',
-      challenger: '0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7',
-      moderator: '0x39249126d90671284cd06495d19C04DD0e54d371',
-      description: 'In 2022 there will be 2000 electric cars accidents',
-      terms: 'Has to be in the us.',
-      expirationDate: 'Fri Sep 16 2022',
-      amount: 30,
-    },
-    {
-      id: 6,
-      status: 'open',
-      placer: '0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC',
-      challenger: '0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7',
-      moderator: '0x39249126d90671284cd06495d19C04DD0e54d371',
-      description: 'In 2022 there will be 2000 electric cars accidents',
-      terms: 'Has to be in the us.',
-      expirationDate: 'Fri Sep 16 2022',
-      amount: 30,
-    },
-  ]
+  // We create an state to display the fetched bets
+  const [bets, setBets] = useState<Bet[]>([])
+  const [page, setPage] = useState(1)
+  const [rows, setRows] = useState(20)
+
+  // Initial function executed by initial effect.
+  const initEFn = () => {
+    const axiosFn = (response: AxiosResponse) => {
+      setBets(response.data)
+    }
+    const axiosCatchFn = (error: AxiosError) => {
+      console.error(error)
+    }
+    axios
+      .get(`http://${apiUrl}/bruno/bets/${page}/${rows}`)
+      .then(axiosFn)
+      .catch(axiosCatchFn)
+  }
+
+  // Initial useEffect to fetch and set the bets.
+  useEffect(initEFn, [page, rows])
 
   // Centralized all UI styles in one place for improve in readability.
   const styles: StyleObject = {

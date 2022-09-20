@@ -99,7 +99,8 @@ func (h *Handlers) SignBet(ctx context.Context, w http.ResponseWriter, r *http.R
 	return web.Respond(ctx, w, nil, http.StatusNoContent)
 }
 
-// AcceptMod handles the user accepting an address as moderator. Returns the httpStatusCode
-func (h *Handlers) AcceptMod(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+// setWinner handles a moderator request to set a winner. Takes the betId,
+// the winner address, and the signature of the mod. Returns the httpStatusCode
+func (h *Handlers) setWinner(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	return web.Respond(ctx, w, nil, http.StatusNoContent)
 }

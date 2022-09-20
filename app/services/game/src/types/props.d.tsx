@@ -47,10 +47,6 @@ export interface JoinProps {
   disabled?: boolean
 }
 
-export interface LoginProps {
-  hideModalMethod: React.Dispatch<React.SetStateAction<boolean>>
-}
-
 export interface PlayersListProps {
   title: string
 }
