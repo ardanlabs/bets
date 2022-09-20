@@ -57,14 +57,18 @@ func Balance(ctx context.Context, converter *currency.Converter, bank *bank.Bank
 	fmt.Println("----------------------------------------------------")
 	fmt.Println("account         :", address)
 
-	gwei, err := bank.AccountBalance(ctx, address)
+	balance, bets, err := bank.AccountBalance(ctx, address)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("wei             :", currency.GWei2Wei(gwei))
-	fmt.Println("gwei            :", gwei)
-	fmt.Println("usd             :", converter.GWei2USD(gwei))
+	fmt.Println("balance         :", currency.GWei2Wei(balance))
+	fmt.Println("gwei            :", balance)
+	fmt.Println("usd             :", converter.GWei2USD(balance))
+
+	fmt.Println("bets            :", currency.GWei2Wei(bets))
+	fmt.Println("gwei            :", bets)
+	fmt.Println("usd             :", converter.GWei2USD(bets))
 
 	return nil
 }
