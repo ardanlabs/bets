@@ -56,6 +56,45 @@ contract Bank {
 
     // Reconcile settles the accounting for a game that was played.
     function Reconcile(address winner, address loser, uint256 amount, uint256 fee) onlyOwner public {
+
+        // Subtract the fee from the loser's account balance immediately.
+        if (accountBalances[loser] < fee) {
+            // TODO: Should this revert, return, or should reconcile be allowed
+            // to continue, zeroing out the bet for both parties?
+            emit EventLog("loser balance too low, taking remainder as fee");
+            accountBalances[Owner] += accountBalances[loser];
+            accountBalances[loser] = 0;
+        } else {
+            accountBalances[Owner] += fee;
+            accountBalances[loser] -= fee;
+        }
+
+        // Reconcile the winnings.
+        if (accountBalances[loser] < amount) {
+            emit EventLog("loser balance too low, moving remainder to winner account");
+            accountBalances[winner] += accountBalances[loser];
+            accountBalances[loser] = 0;
+        } else {
+            accountBalances[winner] += amount;
+            accountBalances[loser] -= amount;
+        }
+
+        // Remove amount from account bets, be cautious of uint overflow.
+        if (amountBet[winner] < amount) {
+            amountBet[winner] = 0;
+        } else {
+            amountBet[winner] -= amount;
+        }
+
+        // TODO: If the amount transferred above was less than the bet amount,
+        // does the loser still retain some "owed" amount?
+        if (amountBet[loser] < amount) {
+            amountBet[loser] = 0;
+        } else {
+            amountBet[loser] -= amount;
+        }
+
+        emit EventLog(string.concat("winner balance[", Error.Itoa(accountBalances[winner]), "] loser balance[", Error.Itoa(accountBalances[loser]), "]"));
     }
 
     // AccountBalance returns the current account's balance.
