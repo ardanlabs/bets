@@ -35,6 +35,23 @@ contract Bank {
 
     // PlaceBet moves money from accountBalances to amountBet.
     function PlaceBet(address person, uint256 amount, uint256 fee) onlyOwner public {
+
+        // Subtract the fee from the account balance immediately.
+        if (accountBalances[person] < fee) {
+            accountBalances[Owner] += accountBalances[person];
+            accountBalances[person] = 0;
+        } else {
+            accountBalances[Owner] += fee;
+            accountBalances[person] -= fee;
+        }
+
+        // Check if the balance is enough to accommodate the bet.
+        if (accountBalances[person] < amount) {
+            revert("account balance too low");
+        }
+
+        amountBet[person] = amount;
+        emit EventLog(string.concat("bet[", Error.Itoa(amount), "] total[", Error.Itoa(amountBet[person]), "]"));
     }
 
     // Reconcile settles the accounting for a game that was played.
