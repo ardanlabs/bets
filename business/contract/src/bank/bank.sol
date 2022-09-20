@@ -122,13 +122,16 @@ contract Bank {
 
         // IF AMOUNT BET IS > BALANCE REVERT
         // WE DON'T WANT THE UNSIGNED INT TO ROLLOVER
+        if (amountBet[msg.sender] > accountBalances[msg.sender]) {
+            revert("not enough balance");
+        }
 
         uint bal = accountBalances[msg.sender] - amountBet[msg.sender];
         if (bal == 0) {
             revert("not enough balance");
         }
 
-        account.transfer(bal);        
+        account.transfer(bal);
         accountBalances[msg.sender] -= bal;
 
         emit EventLog(string.concat("withdraw[", Error.Addrtoa(msg.sender), "] amount[", Error.Itoa(bal), "]"));
