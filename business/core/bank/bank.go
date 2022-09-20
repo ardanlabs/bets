@@ -60,20 +60,22 @@ func (b *Bank) Client() *ethereum.Ethereum {
 
 // AccountBalance will return the balance for the specified account. Only the
 // owner of the smart contract can make this call.
-func (b *Bank) AccountBalance(ctx context.Context, accountID string) (GWei *big.Float, err error) {
+func (b *Bank) AccountBalance(ctx context.Context, accountID string) (BalanceGWei *big.Float, BetGWei *big.Float, err error) {
 	tranOpts, err := b.ethereum.NewCallOpts(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("new call opts: %w", err)
+		return nil, nil, fmt.Errorf("new call opts: %w", err)
 	}
 
-	wei, err := b.contract.AccountBalance(tranOpts, common.HexToAddress(accountID))
+	amounts, err := b.contract.AccountBalance(tranOpts, common.HexToAddress(accountID))
 	if err != nil {
-		return nil, fmt.Errorf("account balance: %w", err)
+		return nil, nil, fmt.Errorf("account balance: %w", err)
 	}
+	balance := amounts[0]
+	bet := amounts[1]
 
-	b.log(ctx, "account balance", "accountid", accountID, "wei", wei)
+	b.log(ctx, "account balance", "accountid", accountID, "balance", balance, "bet", bet)
 
-	return currency.Wei2GWei(wei), nil
+	return currency.Wei2GWei(balance), currency.Wei2GWei(bet), nil
 }
 
 // Balance will return the balance for the connected account.
