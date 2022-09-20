@@ -31,7 +31,7 @@ func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Req
 	bets := []Bet{
 		{
 			ID:             1,
-			Status:         "Open",
+			Status:         "signing",
 			Placer:         "0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC",
 			Challenger:     "0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7",
 			Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
@@ -42,7 +42,7 @@ func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Req
 		},
 		{
 			ID:             2,
-			Status:         "Open",
+			Status:         "moderate",
 			Placer:         "0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC",
 			Challenger:     "0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7",
 			Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
@@ -53,7 +53,7 @@ func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Req
 		},
 		{
 			ID:             3,
-			Status:         "Open",
+			Status:         "open",
 			Placer:         "0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC",
 			Challenger:     "0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7",
 			Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
@@ -71,7 +71,7 @@ func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Req
 func (h *Handlers) QueryByID(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	bet := Bet{
 		ID:             1,
-		Status:         "Open",
+		Status:         "signing",
 		Placer:         "0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC",
 		Challenger:     "0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7",
 		Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
@@ -94,8 +94,13 @@ func (h *Handlers) Create(ctx context.Context, w http.ResponseWriter, r *http.Re
 	return web.Respond(ctx, w, betID, http.StatusOK)
 }
 
-// SignBet handles all bet signing. Returns the httpStatusCode
-func (h *Handlers) SignBet(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+// PersonSignBet handles the users signing. Returns the httpStatusCode
+func (h *Handlers) PersonSignBet(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	return web.Respond(ctx, w, nil, http.StatusNoContent)
+}
+
+// ModSignBet handles the mod signing. Returns the httpStatusCode
+func (h *Handlers) ModSignBet(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	return web.Respond(ctx, w, nil, http.StatusNoContent)
 }
 

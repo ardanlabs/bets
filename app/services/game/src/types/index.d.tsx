@@ -49,10 +49,6 @@ export interface DefaultDoc {
   betId: number
 }
 
-export interface SetWinnerDoc extends DefaultDoc {
-  winnerAddress: string
-}
-
 export interface SetModeratorDoc extends DefaultDoc {
   moderatorAddress: string
 }

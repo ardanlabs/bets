@@ -81,10 +81,7 @@ function Login() {
   const loggedUEFn = () => {
     if (window.sessionStorage.getItem('token') && account) {
       getAppConfig.then((response) => {
-        navigate('/', {
-          state: { ...response, reload: true },
-          replace: true,
-        })
+        navigate(-1)
       })
     }
   }

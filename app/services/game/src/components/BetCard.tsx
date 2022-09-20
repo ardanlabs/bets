@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { StyleObject } from '../types/index.d'
+import { DefaultDoc, StyleObject } from '../types/index.d'
 import { BetCardProps } from '../types/props.d'
 import { shortenIfAddress } from '../utils/address'
 import getTimeLeft from '../utils/getTimeLeft'
@@ -12,6 +12,8 @@ import EditIcon from './icons/EditIcon'
 import ExpandIcon from './icons/ExpandIcon'
 import Modal from './modal/Modal'
 import BetStatus from './BetStatus'
+import useApp from './hooks/useApp'
+import getNowDate from '../utils/getNowDate'
 
 function BetCard(props: BetCardProps) {
   // Extracts props
@@ -23,8 +25,10 @@ function BetCard(props: BetCardProps) {
   // Extracts navigate functionality from React Router useNavigate hook.
   const navigate = useNavigate()
 
+  // Extracts app functionalities.
+  const { personSignBet } = useApp()
+
   // We create 2 states to handle what modals are open
-  const [addModeratorModal, setAddModeratorModal] = useState(false)
   const [editBetModal, setEditBetModal] = useState(false)
 
   // ===========================================================================
@@ -38,13 +42,30 @@ function BetCard(props: BetCardProps) {
     navigate(`/bet/${id}`)
   }
 
+  // signbet handles bet signing
+  function signBet() {
+    const date = getNowDate()
+
+    const doc: DefaultDoc = {
+      address: account as string,
+      dateTime: date,
+      betId: bet.id,
+    }
+
+    console.log(doc)
+
+    personSignBet(doc)
+  }
+
   // ===========================================================================
 
   // Logic for showing the add mod action button.
-  const showAddModeratorButton =
+  const showSignBetButton =
     isDetail &&
-    !bet.moderator &&
-    (bet.placer === account || bet.challenger === account)
+    bet.moderator &&
+    (((bet.status === 'negotiation' || bet.status === 'signing') &&
+      (bet.placer === account || bet.challenger === account)) ||
+      (bet.status === 'moderate' && bet.moderator === account))
 
   // Logic for showing the edit action button.
   const showEditButton =
@@ -141,29 +162,20 @@ function BetCard(props: BetCardProps) {
       <div style={styles.row}>
         <BetStatus status={bet.status} />
         <div style={{ ...styles.row, justifyContent: 'flex-end' }}>
-          {showAddModeratorButton ? (
-            <Modal
-              show={addModeratorModal}
-              setShow={setAddModeratorModal}
-              trigger={
-                <Button
-                  classes="btn-link btn-outline-primary"
-                  style={{
-                    position: 'relative',
-                    display: 'inline-block',
-                    cursor: 'pointer',
-                    width: 'auto',
-                  }}
-                  clickHandler={() => {}}
-                  id="btn"
-                >
-                  Add moderator
-                </Button>
-              }
-              subtitle="Add Moderator"
+          {showSignBetButton ? (
+            <Button
+              classes="btn-link btn-outline-primary"
+              style={{
+                position: 'relative',
+                display: 'inline-block',
+                cursor: 'pointer',
+                width: 'auto',
+              }}
+              clickHandler={signBet}
+              id="btn"
             >
-              <EditBet hideModalMethod={setAddModeratorModal} />
-            </Modal>
+              Sign Bet
+            </Button>
           ) : null}
 
           {isDetail ? (

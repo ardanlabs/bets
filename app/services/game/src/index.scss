@@ -17,6 +17,7 @@
   --status-open-box: #fff384;
   --status-open-text: #d8a504;
   --onGoingBet-title-color: #515151;
+  --success-color: #4bb543;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -193,6 +194,28 @@ button:hover {
   color: #fff !important;
   border-color: var(--primary-color) !important;
   background-color: var(--primary-color) !important;
+  border-width: 2px;
+  font-weight: 600;
+}
+
+// Reset btn secondary color to success
+.btn-outline-secondary {
+  font-family: Roboto Condensed;
+  letter-spacing: 0.35px;
+  color: var(--success-color) !important;
+  border-color: var(--success-color) !important;
+  border-width: 2px;
+  font-weight: 600;
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-secondary:active,
+.btn-outline-secondary:visited {
+  font-family: Roboto Condensed;
+  letter-spacing: 0.35px;
+  color: #fff !important;
+  border-color: var(--success-color) !important;
+  background-color: var(--success-color) !important;
   border-width: 2px;
   font-weight: 600;
 }

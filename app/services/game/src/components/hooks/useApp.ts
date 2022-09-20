@@ -9,7 +9,6 @@ import {
   BetsFilter,
   DefaultDoc,
   SetModeratorDoc,
-  SetWinnerDoc,
 } from '../../types/index.d'
 import { apiUrl } from '../../utils/axiosConfig'
 import docToUint8Array from '../../utils/docToUint8Array'
@@ -17,7 +16,7 @@ import useEthersConnection from './useEthersConnection'
 
 // Create an axios instance to keep the token updated
 const axiosWithToken = axios.create({
-  baseURL: apiUrl,
+  baseURL: `http://${apiUrl}`,
   headers: {
     authorization: window.sessionStorage.getItem('token') as string,
   },
@@ -95,35 +94,29 @@ function useApp() {
     })
   }
 
-  function acceptMod(modAddress: string, address: string, betId: number): void {
-    const axiosFn = (response: AxiosResponse) => {}
-    const axiosErrorFn = (error: AxiosError) => {
-      console.error(error)
-    }
-    axiosWithToken
-      .post('/acceptMod', { modAddress, address, betId })
-      .then(axiosFn)
-      .catch(axiosErrorFn)
-  }
-
   function signBet(
     signerResponse: string,
-    doc: SetModeratorDoc | DefaultDoc | SetWinnerDoc,
+    doc: SetModeratorDoc | DefaultDoc,
   ): void {
-    const axiosFn = (response: AxiosResponse) => {}
+    const axiosFn = (response: AxiosResponse) => {
+      console.log(response)
+    }
     const axiosErrorFn = (error: AxiosError) => {
       console.error(error)
     }
     axiosWithToken
-      .post('/signBet', { ...doc, signerResponse })
+      .post('/bruno/signBet', { ...doc, signerResponse })
       .then(axiosFn)
       .catch(axiosErrorFn)
   }
 
-  function setWinner(doc: SetWinnerDoc): void {
-    signTransaction(doc).then((signerResponse: string) => {
-      signBet(signerResponse, doc)
-    })
+  function personSignBet(doc: DefaultDoc): void {
+    signTransaction(doc)
+      .then((signerResponse: string) => {
+        console.log(signerResponse)
+        signBet(signerResponse, doc)
+      })
+      .catch((error: any) => console.error(error))
   }
 
   return {
@@ -131,9 +124,8 @@ function useApp() {
     getBet,
     postBet,
     addMod,
-    acceptMod,
     signBet,
-    setWinner,
+    personSignBet,
   }
 }
 

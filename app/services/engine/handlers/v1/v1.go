@@ -57,7 +57,8 @@ func Routes(app *web.App, cfg Config) {
 	app.Handle(http.MethodGet, version, "/game/bruno/bets/:page/:rows", bgh.Query)
 	app.Handle(http.MethodGet, version, "/game/bruno/bet/:id", bgh.QueryByID)
 	app.Handle(http.MethodPost, version, "/game/bruno/bet/:id", bgh.Create)
-	app.Handle(http.MethodPost, version, "/game/bruno/signBet", bgh.SignBet)
+	app.Handle(http.MethodPost, version, "/game/bruno/personSignBet", bgh.PersonSignBet)
+	app.Handle(http.MethodPost, version, "/game/bruno/modSignBet", bgh.ModSignBet)
 	app.Handle(http.MethodPost, version, "/game/bruno/setWinner", bgh.SetWinner)
 
 }
