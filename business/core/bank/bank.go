@@ -122,13 +122,22 @@ func (b *Bank) PlaceBet(ctx context.Context, personAccountID string, amount *big
 	b.log(ctx, "place bet completed")
 
 	return tx, receipt, nil
+}
+
+// Reconcile will apply with ante to the winner and loser accounts, plus provide
+// the house the game fee.
+func (b *Bank) Reconcile(ctx context.Context, winningAccountID string, losingAccountID string, anteGWei *big.Float, gameFeeGWei *big.Float) (*types.Transaction, *types.Receipt, error) {
+	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
+	if err != nil {
+		return nil, nil, fmt.Errorf("new trans opts: %w", err)
 	}
 
 	winnerID := common.HexToAddress(winningAccountID)
+	loserID := common.HexToAddress(losingAccountID)
 	anteWei := currency.GWei2Wei(anteGWei)
 	gameFeeWei := currency.GWei2Wei(gameFeeGWei)
 
-	tx, err := b.contract.Reconcile(tranOpts, winnerID, loserIDs, anteWei, gameFeeWei)
+	tx, err := b.contract.Reconcile(tranOpts, winnerID, loserID, anteWei, gameFeeWei)
 	if err != nil {
 		return nil, nil, fmt.Errorf("reconcile: %w", err)
 	}
