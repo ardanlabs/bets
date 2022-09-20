@@ -2,6 +2,8 @@ package brunogrp
 
 import (
 	"context"
+	"fmt"
+	"github.com/ardanlabs/bets/business/core/bet"
 	"math/rand"
 	"net/http"
 
@@ -10,6 +12,7 @@ import (
 
 // Handlers manages the set of user endpoints.
 type Handlers struct {
+	Bet bet.Core
 }
 
 // Bet struct type
@@ -83,15 +86,23 @@ func (h *Handlers) QueryByID(ctx context.Context, w http.ResponseWriter, r *http
 	return web.Respond(ctx, w, bet, http.StatusOK)
 }
 
-// Create creates a bet and returns it's ID.
+// Create creates a bet and returns its ID.
 func (h *Handlers) Create(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	betID := struct {
-		BetID int `json:"betId"`
-	}{
+	v, err := web.GetValues(ctx)
+	if err != nil {
+		return web.NewShutdownError("web value missing from context")
+	}
+
+	nb := bet.NewBet{
 		BetID: rand.Intn(100),
 	}
 
-	return web.Respond(ctx, w, betID, http.StatusOK)
+	bet, err := h.Bet.Create(ctx, nb, v.Now)
+	if err != nil {
+		return fmt.Errorf("creating new bet, newBet[%+v]: %w", nb, err)
+	}
+
+	return web.Respond(ctx, w, bet, http.StatusCreated)
 }
 
 // SignBet handles all bet signing. Returns the httpStatusCode
@@ -99,7 +110,7 @@ func (h *Handlers) SignBet(ctx context.Context, w http.ResponseWriter, r *http.R
 	return web.Respond(ctx, w, nil, http.StatusNoContent)
 }
 
-// setWinner handles a moderator request to set a winner. Takes the betId,
+// SetWinner handles a moderator request to set a winner. Takes the betId,
 // the winner address, and the signature of the mod. Returns the httpStatusCode
 func (h *Handlers) SetWinner(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	return web.Respond(ctx, w, nil, http.StatusNoContent)

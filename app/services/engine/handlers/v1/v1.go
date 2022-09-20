@@ -3,6 +3,8 @@
 package v1
 
 import (
+	"github.com/ardanlabs/bets/business/core/bet"
+	"github.com/jmoiron/sqlx"
 	"net/http"
 	"time"
 
@@ -22,6 +24,7 @@ import (
 type Config struct {
 	Log            *zap.SugaredLogger
 	Auth           *auth.Auth
+	DB             *sqlx.DB
 	Converter      *currency.Converter
 	Bank           *bank.Bank
 	Evts           *events.Events
@@ -52,7 +55,9 @@ func Routes(app *web.App, cfg Config) {
 	app.Handle(http.MethodGet, version, "/game/usd2wei/:usd", ggh.USD2Wei)
 	app.Handle(http.MethodGet, version, "/game/test", ggh.Test, mid.Authenticate(cfg.Log, cfg.Auth))
 
-	var bgh brunogrp.Handlers
+	bgh := brunogrp.Handlers{
+		Bet: bet.NewCore(cfg.Log, cfg.DB),
+	}
 
 	app.Handle(http.MethodGet, version, "/game/bruno/bets/:page/:rows", bgh.Query)
 	app.Handle(http.MethodGet, version, "/game/bruno/bet/:id", bgh.QueryByID)
