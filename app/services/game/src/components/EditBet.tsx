@@ -1,16 +1,57 @@
-import { StyleObject } from '../types/index.d'
+import axios, { AxiosError, AxiosResponse } from 'axios'
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Bet, StyleObject } from '../types/index.d'
 import { EditBetProps } from '../types/props.d'
+import { apiUrl } from '../utils/axiosConfig'
 import Button from './Button'
+import SuccessModal from '../components/SuccessModal'
 
 function EditBet(props: EditBetProps) {
   // Extracts props
   const { bet, hideModalMethod } = props
 
+  // We set a local state to manage input changes
+  const [localBet, setLocalBet] = useState<Bet | Object>(bet ? bet : {})
+
+  // We set localstate to manage success modal
+  const [show, setShow] = useState(false)
+
+  // We extract navigation functionalitys
+  const navigate = useNavigate()
+
   // ===========================================================================
 
   function submitBet() {
+    const submitBetAxiosFn = (response: AxiosResponse) => {
+      if (!bet) {
+        navigate(`/bet/${response.data.betId}`)
+      }
+    }
+    const submitBetAxiosCatchFn = (error: AxiosError) => {
+      console.error(error)
+    }
+
+    axios
+      .post(`http://${apiUrl}/bruno/bet/${bet ? bet.id : ''}`)
+      .then(submitBetAxiosFn)
+      .catch(submitBetAxiosCatchFn)
+
     // Add bet submit
     hideModalMethod(false)
+  }
+
+  // handleFormChange keeps track of the input value change in the local state.
+  function handleFormChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const changedInput = event.target.id
+    const inputValue = event.target.value
+
+    let pairKeyValue: any = {}
+    pairKeyValue[changedInput] = inputValue
+
+    setLocalBet((prevState) => {
+      return { ...prevState, ...pairKeyValue }
+    })
   }
 
   const styles: StyleObject = {
@@ -68,6 +109,7 @@ function EditBet(props: EditBetProps) {
   }
   return (
     <>
+      <SuccessModal show={show} setShow={setShow} betId={1}></SuccessModal>
       <form style={styles.form}>
         <div style={styles.row}>
           <div style={styles.formInputWrapper}>
@@ -78,8 +120,11 @@ function EditBet(props: EditBetProps) {
               Placer Address
             </label>
             <input
-              value={bet?.placer}
-              style={{ ...styles.formPlaceHolder, ...styles.formInput }}
+              onChange={handleFormChange}
+              value={
+                Object.keys(localBet).length ? (localBet as Bet).placer : ''
+              }
+              style={{ ...styles.formInput }}
               type="text"
               className="formInputs form-control"
               placeholder="Placer Address"
@@ -94,8 +139,11 @@ function EditBet(props: EditBetProps) {
               Challenger address
             </label>
             <input
-              value={bet?.challenger}
-              style={{ ...styles.formPlaceHolder, ...styles.formInput }}
+              onChange={handleFormChange}
+              value={
+                Object.keys(localBet).length ? (localBet as Bet).challenger : ''
+              }
+              style={{ ...styles.formInput }}
               type="text"
               className="formInputs form-control"
               placeholder="Challenger address"
@@ -112,8 +160,13 @@ function EditBet(props: EditBetProps) {
               Description
             </label>
             <input
-              value={bet?.description}
-              style={{ ...styles.formPlaceHolder, ...styles.formInput }}
+              onChange={handleFormChange}
+              value={
+                Object.keys(localBet).length
+                  ? (localBet as Bet).description
+                  : ''
+              }
+              style={{ ...styles.formInput }}
               type="text"
               className="formInputs form-control"
               placeholder="Description"
@@ -128,8 +181,11 @@ function EditBet(props: EditBetProps) {
               Terms
             </label>
             <input
-              value={bet?.terms}
-              style={{ ...styles.formPlaceHolder, ...styles.formInput }}
+              onChange={handleFormChange}
+              value={
+                Object.keys(localBet).length ? (localBet as Bet).terms : ''
+              }
+              style={{ ...styles.formInput }}
               type="text"
               className="formInputs form-control"
               placeholder="Terms"
@@ -146,7 +202,12 @@ function EditBet(props: EditBetProps) {
               Expiration date
             </label>
             <input
-              value={bet?.expirationDate}
+              onChange={handleFormChange}
+              value={
+                Object.keys(localBet).length
+                  ? (localBet as Bet).expirationDate
+                  : ''
+              }
               style={{ ...styles.formPlaceHolder, ...styles.formInput }}
               type="date"
               className="formInputs form-control"
@@ -162,8 +223,11 @@ function EditBet(props: EditBetProps) {
               Amount
             </label>
             <input
-              value={bet?.amount}
-              style={{ ...styles.formPlaceHolder, ...styles.formInput }}
+              onChange={handleFormChange}
+              value={
+                Object.keys(localBet).length ? (localBet as Bet).amount : ''
+              }
+              style={{ ...styles.formInput }}
               type="text"
               className="formInputs form-control"
               placeholder="Amount"
@@ -183,7 +247,7 @@ function EditBet(props: EditBetProps) {
             clickHandler={submitBet}
             id={bet ? `${bet.id}` : 'edit'}
           >
-            Create bet
+            {bet ? 'Save' : 'Create bet'}
           </Button>
         </div>
       </form>

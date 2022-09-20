@@ -154,6 +154,33 @@ func (b *Bank) Reconcile(ctx context.Context, winningAccountID string, losingAcc
 	return tx, receipt, nil
 }
 
+// Drain will drain the full value of the smart contract and transfer it to
+// another contract/wallet address.
+func (b *Bank) Drain(ctx context.Context, target string) (*types.Transaction, *types.Receipt, error) {
+	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
+	if err != nil {
+		return nil, nil, fmt.Errorf("new trans opts: %w", err)
+	}
+
+	targetID := common.HexToAddress(target)
+
+	tx, err := b.contract.Drain(tranOpts, targetID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("drain: %w", err)
+	}
+
+	b.log(ctx, "drain started", "target", target)
+
+	receipt, err := b.ethereum.WaitMined(ctx, tx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("wait mined: %w", err)
+	}
+
+	b.log(ctx, "drain completed")
+
+	return tx, receipt, nil
+}
+
 // Deposit will add the given amount to the account's contract balance.
 func (b *Bank) Deposit(ctx context.Context, amountGWei *big.Float) (*types.Transaction, *types.Receipt, error) {
 	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, amountGWei)

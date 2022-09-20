@@ -89,3 +89,9 @@ export interface EditBetProps {
 export interface BetStatusProps {
   status: string
 }
+
+export interface SuccessModalProps {
+  show: boolean
+  setShow: React.Dispatch<React.SetStateAction<boolean>>
+  betId?: number
+}
