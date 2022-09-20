@@ -216,6 +216,77 @@ func Test_WithdrawWithoutBalance(t *testing.T) {
 	}
 }
 
+func Test_PlaceBet(t *testing.T) {
+	contractID, err := deployContract()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Need a converter for handling ETH to USD to ETH conversions.
+	converter := currency.NewDefaultConverter()
+
+	// Connect owner to the smart contract.
+	ownerClient, err := bank.New(ctx, nil, ethereum.NetworkHTTPLocalhost, OwnerKeyPath, OwnerPassPhrase, contractID)
+	if err != nil {
+		t.Fatalf("error creating new bank for owner: %s", err)
+	}
+
+	// Connect player 1 to the smart contract.
+	player1Client, err := bank.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player1KeyPath, Player1PassPhrase, contractID)
+	if err != nil {
+		t.Fatalf("error creating new bank for player 1: %s", err)
+	}
+
+	// Deposit ~$20 USD into the player's account.
+	player1DepositGWei := converter.USD2GWei(big.NewFloat(20))
+	if _, _, err := player1Client.Deposit(ctx, player1DepositGWei); err != nil {
+		t.Fatalf("error making deposit player 1: %s", err)
+	}
+
+	// Set the bet amount and fee.
+	betGwei := converter.USD2GWei(big.NewFloat(10))
+	feeGwei := converter.USD2GWei(big.NewFloat(5))
+
+	// Player 1 bets $10 USD, providing a $5 bettors fee to the house.
+	tx, receipt, err := ownerClient.PlaceBet(ctx, Player1Address, betGwei, feeGwei)
+	if err != nil {
+		t.Fatalf("error calling PlaceBet: %s", err)
+	}
+
+	t.Log(converter.FmtTransaction(tx))
+	t.Log(converter.FmtTransactionReceipt(receipt, tx.GasPrice()))
+
+	// Capture player 1 balance in the smart contract.
+	player1Balance, err := player1Client.Balance(ctx)
+	if err != nil {
+		t.Fatalf("error calling balance for player 1: %s", err)
+	}
+
+	// Player should have $5 USD remaining balance after bet.
+	expectedPlayer1BalanceGWei32, _ := converter.USD2GWei(big.NewFloat(5)).Float32()
+	actualPlayer1BalanceGWei32, _ := player1Balance.Float32()
+	if expectedPlayer1BalanceGWei32 != actualPlayer1BalanceGWei32 {
+		t.Fatalf("expecting player 1 balance to be %f; got %f", expectedPlayer1BalanceGWei32, actualPlayer1BalanceGWei32)
+	}
+
+	// Capture owner balance in the smart contract.
+	ownerBalance, err := ownerClient.Balance(ctx)
+	if err != nil {
+		t.Fatalf("error calling balance for owner: %s", err)
+	}
+
+	// The owner should have $5 USD.
+	feeGWei32, _ := feeGwei.Float32()
+	ownerBalance32, _ := ownerBalance.Float32()
+	if ownerBalance32 != feeGWei32 {
+		t.Fatalf("expecting owner balance to be %f; got %f", feeGWei32, ownerBalance32)
+	}
+
+}
+
 func Test_Reconcile(t *testing.T) {
 	contractID, err := deployContract()
 	if err != nil {
@@ -263,7 +334,7 @@ func Test_Reconcile(t *testing.T) {
 	feeGwei := converter.USD2GWei(big.NewFloat(5))
 
 	// Reconcile with player 1 as the winner and player 2 as the loser.
-	tx, receipt, err := ownerClient.Reconcile(ctx, Player1Address, []string{Player2Address}, anteGwei, feeGwei)
+	tx, receipt, err := ownerClient.Reconcile(ctx, Player1Address, Player2Address, anteGwei, feeGwei)
 	if err != nil {
 		t.Fatalf("error calling Reconcile: %s", err)
 	}
@@ -291,8 +362,8 @@ func Test_Reconcile(t *testing.T) {
 		t.Fatalf("error calling balance for player 2: %s", err)
 	}
 
-	// The loser should have $15 USD.
-	losingBalanceGWei32, _ := converter.USD2GWei(big.NewFloat(15)).Float32()
+	// The loser should have $10 USD.
+	losingBalanceGWei32, _ := converter.USD2GWei(big.NewFloat(10)).Float32()
 	player2Balance32, _ := player2Balance.Float32()
 	if player2Balance32 != losingBalanceGWei32 {
 		t.Fatalf("expecting loser player balance to be %f; got %f", losingBalanceGWei32, player2Balance32)
