@@ -97,9 +97,9 @@ contract Bank {
         emit EventLog(string.concat("winner balance[", Error.Itoa(accountBalances[winner]), "] loser balance[", Error.Itoa(accountBalances[loser]), "]"));
     }
 
-    // AccountBalance returns the current account's balance.
+    // AccountBalance returns the specified account's balance and amount bet.
     function AccountBalance(address account) onlyOwner view public returns (uint[2] memory) {
-        return [accountBalances[account], amountBet[msg.sender]];
+        return [accountBalances[account], amountBet[account]];
     }
 
     // =========================================================================
