@@ -30,8 +30,8 @@ CREATE TABLE bets (
     date_updated      TIMESTAMP,
 
     PRIMARY KEY (bet_id),
-    FOREIGN KEY (moderator_address) REFERENCES accounts(address) ON DELETE CASCADE
     FOREIGN KEY (status_id) REFERENCES statuses(status_id) ON DELETE CASCADE
+    FOREIGN KEY (moderator_address) REFERENCES accounts(address) ON DELETE CASCADE
 );
 
 -- Version: 1.4
