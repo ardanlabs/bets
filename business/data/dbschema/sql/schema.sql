@@ -1,11 +1,6 @@
 -- Version: 1.1
--- Description: Create table accounts
-CREATE TABLE statuses (
-  status_id INT
-  status    VARCHAR(32)
-
-  PRIMARY KEY (status_id)
-);
+-- Description: Create status enums.
+CREATE TYPE STATUSES AS ENUM ('negotiation', 'signatures', "moderation", "live", "cancel");
 
 -- Version: 1.2
 -- Description: Create table accounts
@@ -20,17 +15,16 @@ CREATE TABLE accounts (
 -- Description: Create table bets
 CREATE TABLE bets (
     bet_id            UUID,
-    status_id         INT,
+    status_id         STATUSES,
     description       VARCHAR(240),
     terms             VARCHAR(240),
     amount            INT,
-    moderator_address UUID          NULL,
+    moderator_address VARCHAR(42)   NULL,
     date_expired      TIMESTAMP,
     date_created      TIMESTAMP,
     date_updated      TIMESTAMP,
 
     PRIMARY KEY (bet_id),
-    FOREIGN KEY (status_id) REFERENCES statuses(status_id) ON DELETE CASCADE
     FOREIGN KEY (moderator_address) REFERENCES accounts(address) ON DELETE CASCADE
 );
 
