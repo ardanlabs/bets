@@ -55,15 +55,23 @@ function BetCard(props: BetCardProps) {
     personSignBet(doc)
   }
 
+  console.log(bet)
+
+  function isUserPartOfBet() {
+    return bet.players.filter((player) => player.address === account)
+  }
+
   // ===========================================================================
 
   // Logic for showing the add mod action button.
-  const showSignBetButton = isDetail && bet.moderator
-  // Waiting for backend changes
-  // &&
-  // ((bet.status === 'negotiation' && bet.placer === account) ||
-  //   (bet.status === 'signing' && bet.challenger === account) ||
-  //   (bet.status === 'moderate' && bet.moderator === account))
+  const showSignBetButton =
+    isDetail &&
+    bet.moderator &&
+    ((bet.status === 'negotiation' && isUserPartOfBet().length) ||
+      (bet.status === 'signing' &&
+        isUserPartOfBet().length &&
+        !isUserPartOfBet()[0].signed) ||
+      (bet.status === 'moderate' && bet.moderator === account))
 
   // Logic for showing the edit action button.
   const showEditButton =
