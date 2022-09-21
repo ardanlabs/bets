@@ -1,5 +1,14 @@
 -- Version: 1.1
 -- Description: Create table accounts
+CREATE TABLE statuses (
+  status_id INT
+  status    VARCHAR(32)
+
+  PRIMARY KEY (status_id)
+);
+
+-- Version: 1.2
+-- Description: Create table accounts
 CREATE TABLE accounts (
   address VARCHAR(42),
   nonce   INT
@@ -7,11 +16,11 @@ CREATE TABLE accounts (
   PRIMARY KEY (address)
 );
 
--- Version: 1.2
+-- Version: 1.3
 -- Description: Create table bets
 CREATE TABLE bets (
     bet_id            UUID,
-    status            INT,
+    status_id         INT,
     description       VARCHAR(240),
     terms             VARCHAR(240),
     amount            INT,
@@ -22,9 +31,10 @@ CREATE TABLE bets (
 
     PRIMARY KEY (bet_id),
     FOREIGN KEY (moderator_address) REFERENCES accounts(address) ON DELETE CASCADE
+    FOREIGN KEY (status_id) REFERENCES statuses(status_id) ON DELETE CASCADE
 );
 
--- Version: 1.3
+-- Version: 1.4
 -- Description: Create table bets_players
 CREATE TABLE bets_players (
     bet_id  UUID,
@@ -35,7 +45,7 @@ CREATE TABLE bets_players (
     FOREIGN KEY (address) REFERENCES accounts(address) ON DELETE CASCADE
 );
 
--- Version: 1.4
+-- Version: 1.5
 -- Description: Create table bets_signatures
 CREATE TABLE bets_signatures (
     bet_id      UUID,
