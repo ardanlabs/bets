@@ -1,12 +1,12 @@
 -- Version: 1.1
 -- Description: Create status enums.
-CREATE TYPE STATUSES AS ENUM ('negotiation', 'signatures', "moderation", "live", "cancel");
+CREATE TYPE STATUSES AS ENUM ('negotiation', 'signatures', 'moderation', 'live', 'cancel');
 
 -- Version: 1.2
 -- Description: Create table accounts
 CREATE TABLE accounts (
   address VARCHAR(42),
-  nonce   INT
+  nonce   INT,
 
   PRIMARY KEY (address)
 );
