@@ -31,8 +31,9 @@ CREATE TABLE bets (
 -- Version: 1.4
 -- Description: Create table bets_players
 CREATE TABLE bets_players (
-    bet_id  UUID,
-    address VARCHAR(42),
+    bet_id   UUID,
+    address  VARCHAR(42),
+    in_favor BOOLEAN,
 
     PRIMARY KEY (bet_id, address),
     FOREIGN KEY (bet_id) REFERENCES bets(bet_id) ON DELETE CASCADE,
