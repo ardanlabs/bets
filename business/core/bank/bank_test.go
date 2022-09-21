@@ -216,6 +216,68 @@ func Test_WithdrawWithoutBalance(t *testing.T) {
 	}
 }
 
+func Test_Drain(t *testing.T) {
+	contractID, err := deployContract()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Need a converter for handling ETH to USD to ETH conversions.
+	converter := currency.NewDefaultConverter()
+
+	// Connect owner to the smart contract.
+	ownerClient, err := bank.New(ctx, nil, ethereum.NetworkHTTPLocalhost, OwnerKeyPath, OwnerPassPhrase, contractID)
+	if err != nil {
+		t.Fatalf("error creating new bank for owner: %s", err)
+	}
+
+	// Connect player 1 to the smart contract.
+	player1Client, err := bank.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player1KeyPath, Player1PassPhrase, contractID)
+	if err != nil {
+		t.Fatalf("error creating new bank for player 1: %s", err)
+	}
+
+	// Connect player 2 to Ethereum
+	player2Ethereum, err := ethereum.New(ctx, ethereum.NetworkHTTPLocalhost, Player2KeyPath, Player2PassPhrase)
+	if err != nil {
+		t.Fatalf("error creating ethereum connection for player 2: %s", err)
+	}
+
+	// Deposit ~$10 USD into the players account.
+	player1DepositGWei := converter.USD2GWei(big.NewFloat(10))
+	if _, _, err := player1Client.Deposit(ctx, player1DepositGWei); err != nil {
+		t.Fatalf("error making deposit player 1: %s", err)
+	}
+
+	// Get Player 2's Ethereum account balance before Drain.
+	balanceBeforeWei, err := player2Ethereum.Balance(ctx)
+	if err != nil {
+		t.Fatalf("error checking player 2 balance: %s", err)
+	}
+
+	// Drain the contract value into player 2's account.
+	if _, _, err := ownerClient.Drain(ctx, Player2Address); err != nil {
+		t.Fatalf("error draining contract: %s", err)
+	}
+
+	// Confirm Player 2's Etherum account has the correct amount.
+	balanceAfterWei, err := player2Ethereum.Balance(ctx)
+	if err != nil {
+		t.Fatalf("error checking player 2 balance: %s", err)
+	}
+
+	expected32, _ := player1DepositGWei.Float32()
+	balanceDifference := balanceAfterWei.Sub(balanceAfterWei, balanceBeforeWei)
+	got32, _ := currency.Wei2GWei(balanceDifference).Float32()
+
+	if expected32 != got32 {
+		t.Fatalf("expecting player 2 balance to be %f; got %f", expected32, got32)
+	}
+}
+
 func Test_PlaceBet(t *testing.T) {
 	contractID, err := deployContract()
 	if err != nil {
