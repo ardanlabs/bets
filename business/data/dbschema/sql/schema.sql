@@ -6,7 +6,7 @@ CREATE TYPE STATUSES AS ENUM ('negotiation', 'signatures', 'moderation', 'live',
 -- Description: Create table accounts
 CREATE TABLE accounts (
   address VARCHAR(42),
-  nonce   INT
+  nonce   INT,
 
   PRIMARY KEY (address)
 );
