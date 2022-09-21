@@ -25,5 +25,6 @@ export const styles: StyleObject = {
     alignItems: 'center',
     top: '0',
     left: '0',
+    zIndex: '5',
   },
 }

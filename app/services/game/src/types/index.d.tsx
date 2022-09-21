@@ -26,19 +26,23 @@ export interface AddEthereumChainParameter {
 
 export interface BetsFilter {
   status: string
-  placer: string
+  player: string
   challenger: string
   expirationDate: string
+}
+
+export interface Player {
+  address: string
+  signed: boolean
 }
 
 export interface Bet {
   id: number
   status: string
-  placer: string
+  players: Player[]
   moderator: string
   description: string
   terms: string
-  challenger: string
   expirationDate: string
   amount: number
 }

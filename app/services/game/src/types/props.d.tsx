@@ -38,7 +38,12 @@ export interface ButtonProps {
   classes?: string
   id?: string
   disabled?: boolean
-  children: (JSX.Element | null)[] | JSX.Element | string | null | undefined
+  children:
+    | (JSX.Element[] | JSX.Element | null)[]
+    | JSX.Element
+    | string
+    | null
+    | undefined
   style?: React.CSSProperties
   tooltip?: string
 }
@@ -61,11 +66,21 @@ export interface SubtitleProps {
 }
 
 export interface RoutesWrapperProps {
-  children: (JSX.Element | null)[] | JSX.Element | string | null | undefined
+  children:
+    | (JSX.Element[] | JSX.Element | null)[]
+    | JSX.Element
+    | string
+    | null
+    | undefined
 }
 
 export interface CardProps {
-  children: (JSX.Element | null)[] | JSX.Element | string | null | undefined
+  children:
+    | (JSX.Element[] | JSX.Element | null)[]
+    | JSX.Element
+    | string
+    | null
+    | undefined
   styleObject?: StyleObject
   initial?: boolean | Target | VariantLabels
   animate?: AnimationControls | TargetAndTransition | VariantLabels | boolean

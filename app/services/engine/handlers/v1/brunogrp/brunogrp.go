@@ -15,28 +15,36 @@ type Handlers struct {
 	Bet bet.Core
 }
 
+type Player struct {
+	Address string `json:"address"`
+	Signed  bool   `json:"signed"`
+}
+
 // Bet struct type
 type Bet struct {
-	ID             int    `json:"id"`
-	Status         string `json:"status"`
-	Placer         string `json:"placer"`
-	Challenger     string `json:"challenger"`
-	Moderator      string `json:"moderator"`
-	Description    string `json:"description"`
-	Terms          string `json:"terms"`
-	ExpirationDate string `json:"expirationDate"`
-	Amount         int    `json:"amount"`
+	ID             int      `json:"id"`
+	Status         string   `json:"status"`
+	Players        []Player `json:"players"`
+	Moderator      string   `json:"moderator"`
+	Description    string   `json:"description"`
+	Terms          string   `json:"terms"`
+	ExpirationDate string   `json:"expirationDate"`
+	Amount         int      `json:"amount"`
 }
 
 // Query returns a list of bets with paging.
 func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	// Mockup bets slice
+
+	players := []Player{
+		{Address: "0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC", Signed: false},
+		{Address: "0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7", Signed: false},
+	}
 	bets := []Bet{
 		{
 			ID:             1,
 			Status:         "signing",
-			Placer:         "0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC",
-			Challenger:     "0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7",
+			Players:        players,
 			Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
 			Description:    "In 2022 there will be 2000 electric cars accidents",
 			Terms:          "Has to be in the us.",
@@ -46,8 +54,7 @@ func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Req
 		{
 			ID:             2,
 			Status:         "moderate",
-			Placer:         "0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC",
-			Challenger:     "0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7",
+			Players:        players,
 			Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
 			Description:    "In 2022 there will be 2000 electric cars accidents",
 			Terms:          "Has to be in the us.",
@@ -57,8 +64,7 @@ func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Req
 		{
 			ID:             3,
 			Status:         "open",
-			Placer:         "0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC",
-			Challenger:     "0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7",
+			Players:        players,
 			Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
 			Description:    "In 2022 there will be 2000 electric cars accidents",
 			Terms:          "Has to be in the us.",
@@ -72,11 +78,16 @@ func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 // QueryByID returns a bet by its ID.
 func (h *Handlers) QueryByID(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+
+	players := []Player{
+		{Address: "0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC", Signed: false},
+		{Address: "0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7", Signed: false},
+	}
+
 	bet := Bet{
 		ID:             1,
 		Status:         "signing",
-		Placer:         "0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC",
-		Challenger:     "0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7",
+		Players:        players,
 		Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
 		Description:    "In 2022 there will be 2000 electric cars accidents",
 		Terms:          "Has to be in the us.",

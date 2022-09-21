@@ -52,28 +52,27 @@ function BetCard(props: BetCardProps) {
       betId: bet.id,
     }
 
-    console.log(doc)
-
     personSignBet(doc)
   }
 
   // ===========================================================================
 
   // Logic for showing the add mod action button.
-  const showSignBetButton =
-    isDetail &&
-    bet.moderator &&
-    ((bet.status === 'negotiation' && bet.placer === account) ||
-      (bet.status === 'signing' && bet.challenger === account) ||
-      (bet.status === 'moderate' && bet.moderator === account))
+  const showSignBetButton = isDetail && bet.moderator
+  // Waiting for backend changes
+  // &&
+  // ((bet.status === 'negotiation' && bet.placer === account) ||
+  //   (bet.status === 'signing' && bet.challenger === account) ||
+  //   (bet.status === 'moderate' && bet.moderator === account))
 
   // Logic for showing the edit action button.
   const showEditButton =
     isDetail &&
     bet.status !== 'live' &&
     bet.status !== 'canceled' &&
-    bet.status !== 'moderate' &&
-    (bet.placer === account || bet.challenger === account)
+    bet.status !== 'moderate'
+  // Waiting for backend changes
+  // && (bet.placer === account || bet.challenger === account)
 
   // Centralized all UI styles in one place for improve in readability.
   const styles: StyleObject = {
@@ -195,7 +194,7 @@ function BetCard(props: BetCardProps) {
                 }
                 subtitle="Edit bet"
               >
-                <EditBet hideModalMethod={setEditBetModal} />
+                <EditBet bet={bet} hideModalMethod={setEditBetModal} />
               </Modal>
             ) : null
           ) : (
@@ -210,20 +209,18 @@ function BetCard(props: BetCardProps) {
           )}
         </div>
       </div>
-      {bet.placer ? (
-        <div style={styles.row}>
-          <div style={{ ...styles.text, ...styles.title }}>Placer</div>
-          <div style={{ ...styles.text }}>{shortenIfAddress(bet.placer)}</div>
-        </div>
-      ) : null}
-      {bet.challenger && isDetail ? (
-        <div style={styles.row}>
-          <div style={{ ...styles.text, ...styles.title }}>Challenger</div>
-          <div style={{ ...styles.text }}>
-            {shortenIfAddress(bet.challenger)}
-          </div>
-        </div>
-      ) : null}
+      {bet.players
+        ? bet.players.map((player, index) => (
+            <div key={player.address} style={styles.row}>
+              <div style={{ ...styles.text, ...styles.title }}>
+                Player {index + 1}
+              </div>
+              <div style={{ ...styles.text }}>
+                {shortenIfAddress(player.address)}
+              </div>
+            </div>
+          ))
+        : null}
       {bet.moderator && isDetail ? (
         <div style={styles.row}>
           <div style={{ ...styles.text, ...styles.title }}>Moderator</div>

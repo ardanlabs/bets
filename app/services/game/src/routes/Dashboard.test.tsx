@@ -10,8 +10,10 @@ const bets: Bet[] = [
   {
     id: 1,
     status: 'open',
-    placer: '0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC',
-    challenger: '0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7',
+    players: [
+      { address: '0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC', signed: false },
+      { address: '0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7', signed: false },
+    ],
     moderator: '0x39249126d90671284cd06495d19C04DD0e54d371',
     description: 'In 2022 there will be 2000 electric cars accidents',
     terms: 'Has to be in the us.',

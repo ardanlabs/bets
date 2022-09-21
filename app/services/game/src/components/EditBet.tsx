@@ -12,7 +12,20 @@ function EditBet(props: EditBetProps) {
   const { bet, hideModalMethod } = props
 
   // We set a local state to manage input changes
-  const [localBet, setLocalBet] = useState<Bet | Object>(bet ? bet : {})
+  const [localBet, setLocalBet] = useState<Bet | Object>(
+    bet
+      ? bet
+      : {
+          id: null,
+          status: null,
+          players: [],
+          moderator: null,
+          description: null,
+          terms: null,
+          expirationDate: null,
+          amount: null,
+        },
+  )
 
   // We set localstate to manage success modal
   const [show, setShow] = useState(false)
@@ -39,6 +52,24 @@ function EditBet(props: EditBetProps) {
 
     // Add bet submit
     hideModalMethod(false)
+  }
+
+  // handlePlayersChange keeps track of the input value change in the local state.
+  function handlePlayersChange(
+    event: React.ChangeEvent<HTMLInputElement>,
+    playerIndex: number,
+  ) {
+    const inputValue = event.target.value
+
+    setLocalBet((prevState: Bet) => {
+      let prevPlayers = prevState.players
+      let newPlayer = prevPlayers[playerIndex]
+
+      newPlayer.address = inputValue
+
+      const players = [...prevPlayers]
+      return { ...prevState, players }
+    })
   }
 
   // handleFormChange keeps track of the input value change in the local state.
@@ -113,44 +144,25 @@ function EditBet(props: EditBetProps) {
       <SuccessModal show={show} setShow={setShow} betId={1}></SuccessModal>
       <form style={styles.form}>
         <div style={styles.row}>
-          <div style={styles.formInputWrapper}>
-            <label
-              style={{ ...styles.text, ...styles.formLabel }}
-              htmlFor="placer"
-            >
-              Placer Address
-            </label>
-            <input
-              onChange={handleFormChange}
-              value={
-                Object.keys(localBet).length ? (localBet as Bet).placer : ''
-              }
-              style={{ ...styles.formInput }}
-              type="text"
-              className="formInputs form-control"
-              placeholder="Placer Address"
-              id="placer"
-            />
-          </div>
-          <div style={styles.formInputWrapper}>
-            <label
-              style={{ ...styles.text, ...styles.formLabel }}
-              htmlFor="challenger"
-            >
-              Challenger address
-            </label>
-            <input
-              onChange={handleFormChange}
-              value={
-                Object.keys(localBet).length ? (localBet as Bet).challenger : ''
-              }
-              style={{ ...styles.formInput }}
-              type="text"
-              className="formInputs form-control"
-              placeholder="Challenger address"
-              id="challenger"
-            />
-          </div>
+          {(localBet as Bet).players.map((player, index) => (
+            <div key={index} style={styles.formInputWrapper}>
+              <label
+                style={{ ...styles.text, ...styles.formLabel }}
+                htmlFor={`player-${index}`}
+              >
+                Player {index + 1}
+              </label>
+              <input
+                onChange={(e) => handlePlayersChange(e, index)}
+                value={player.address}
+                style={{ ...styles.formInput }}
+                type="text"
+                className="formInputs form-control"
+                placeholder={`Player ${index + 1}`}
+                id={`player-${index}`}
+              />
+            </div>
+          ))}
         </div>
         <div style={styles.row}>
           <div style={styles.formInputWrapper}>
@@ -169,7 +181,7 @@ function EditBet(props: EditBetProps) {
               type="text"
               className="formInputs form-control"
               placeholder="Moderator address"
-              id="mod"
+              id="moderator"
             />
           </div>
         </div>
