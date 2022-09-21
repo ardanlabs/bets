@@ -54,7 +54,7 @@ CREATE TABLE bets_signatures (
     signature   VARCHAR(66),
     date_signed TIMESTAMP,
 
-    PRIMARY KEY (bet_id, player_id),
+    PRIMARY KEY (bet_id, address, nonce),
     FOREIGN KEY (bet_id) REFERENCES bets(bet_id) ON DELETE CASCADE,
     FOREIGN KEY (address) REFERENCES accounts(address) ON DELETE CASCADE
 );
