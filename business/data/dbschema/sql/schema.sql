@@ -1,43 +1,46 @@
--- Version: 1.1
--- Description: Create table users
-CREATE TABLE users (
-	user_id       UUID,
-	name          TEXT,
-	email         TEXT UNIQUE,
-	roles         TEXT[],
-	password_hash TEXT,
-	date_created  TIMESTAMP,
-	date_updated  TIMESTAMP,
+-- Description: Create table bets
+CREATE TABLE bets (
+    bet_id        UUID,
+    status        TEXT,
+    description   TEXT,
+    terms         TEXT,
+    amount        INT,
+    expiration    TIMESTAMP,
+    moderator_id  UUID,
+    created       TIMESTAMP,
+    updated       TIMESTAMP,
 
-	PRIMARY KEY (user_id)
+    PRIMARY KEY (bet_id),
+    FOREIGN KEY (moderator_id) REFERENCES accounts(account_id) ON DELETE CASCADE
 );
 
--- Version: 1.2
--- Description: Create table products
-CREATE TABLE products (
-	product_id   UUID,
-	name         TEXT,
-	cost         INT,
-	quantity     INT,
-	user_id      UUID,
-	date_created TIMESTAMP,
-	date_updated TIMESTAMP,
+-- Description: Create table bets_players
+CREATE TABLE bets_players (
+    bet_id    UUID,
+    account_id UUID,
 
-	PRIMARY KEY (product_id),
-	FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    PRIMARY KEY (bet_id, account_id),
+    FOREIGN KEY (bet_id) REFERENCES bets(bet_id) ON DELETE CASCADE,
+    FOREIGN KEY (account_id) REFERENCES accounts(account_id) ON DELETE CASCADE
 );
 
--- Version: 1.3
--- Description: Create table sales
-CREATE TABLE sales (
-	sale_id      UUID,
-	user_id      UUID,
-	product_id   UUID,
-	quantity     INT,
-	paid         INT,
-	date_created TIMESTAMP,
+-- Description: Create table bets_signatures
+CREATE TABLE bets_signatures (
+    bet_id      UUID,
+    account_id  UUID,
+    signature   TEXT,
+    nonce       INT,
+    date        TIMESTAMP,
 
-	PRIMARY KEY (sale_id),
-	FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-	FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE
+    PRIMARY KEY (bet_id, player_id),
+    FOREIGN KEY (bet_id) REFERENCES bets(bet_id) ON DELETE CASCADE,
+    FOREIGN KEY (account_id) REFERENCES accounts(account_id) ON DELETE CASCADE
+);
+
+-- Description: Create table accounts
+CREATE TABLE accounts (
+  account_id UUID,
+  address    TEXT,
+
+  PRIMARY KEY (account_id)
 );
