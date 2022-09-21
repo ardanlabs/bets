@@ -26,7 +26,6 @@ function Card(props: CardProps) {
       boxShadow: '3px 4px 4px rgba(0, 0, 0, 0.25)',
       borderRadius: '8px',
       padding: '8px 16px',
-      aspectRatio: '3/2',
     },
     closeButton: {
       alignSelf: 'flex-end',

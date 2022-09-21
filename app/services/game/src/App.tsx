@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import './App.scss'
 import { appConfig } from './types/index.d'
-import { Route, Routes, useNavigate } from 'react-router-dom'
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { getAppConfig } from '.'
 import { utils } from 'ethers'
 import {
@@ -25,6 +25,9 @@ function App() {
 
   // Extracts router navigation functionality
   const navigate = useNavigate()
+
+  // Gets location from useLocation Hook.
+  const location = useLocation()
 
   // Sets state for the ethersConnection context
   const [ethersConnection, setEthersConnection] =
@@ -66,6 +69,7 @@ function App() {
         })
         return
       }
+      if (location.pathname === 'wrongNetwork') navigate('/')
     }
     getAppConfig.then(fn)
   }

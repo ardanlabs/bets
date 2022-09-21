@@ -3,10 +3,16 @@ import { useEffect, useState } from 'react'
 import { Bet, StyleObject } from '../types/index.d'
 import { apiUrl } from '../utils/axiosConfig'
 import BetCard from './BetCard'
+import useEthersConnection from './hooks/useEthersConnection'
 import Subtitle from './Subtitle'
 
 // YourBets component. Displays your personal bets.
 function YourBets() {
+  // Extracts user address from ethersConnection hook.
+  const { account } = useEthersConnection()
+
+  const token = window.sessionStorage.getItem('token')
+
   // We create an state to display the fetched bets
   const [bets, setBets] = useState<Bet[]>([])
   const [page, setPage] = useState(1)
@@ -40,7 +46,7 @@ function YourBets() {
       padding: '32px 62px',
     },
   }
-  return (
+  return account && token ? (
     <>
       <Subtitle showSearch text="Your bets" />
       <section style={styles.yourBets}>
@@ -49,7 +55,7 @@ function YourBets() {
         ))}
       </section>
     </>
-  )
+  ) : null
 }
 
 export default YourBets

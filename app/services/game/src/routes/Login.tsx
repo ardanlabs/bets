@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react'
 import Button from '../components/Button'
 import MetamaskLogo from '../components/icons/metamask'
 import getNowDate from '../utils/getNowDate'
-import { useNavigate } from 'react-router-dom'
-import { getAppConfig } from '..'
 import useEthersConnection from '../components/hooks/useEthersConnection'
 import docToUint8Array from '../utils/docToUint8Array'
 import useConnectEngine from '../components/hooks/useConnectEngine'
+import { getAppConfig } from '..'
+import { useNavigate } from 'react-router-dom'
 
 // Login component.
 // Doesn't receives parameters
@@ -53,6 +53,7 @@ function Login() {
         setLoading(true)
         return
       }
+      window.sessionStorage.removeItem('token')
     }
 
     function connectFn() {

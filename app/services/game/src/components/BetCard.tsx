@@ -63,8 +63,8 @@ function BetCard(props: BetCardProps) {
   const showSignBetButton =
     isDetail &&
     bet.moderator &&
-    (((bet.status === 'negotiation' || bet.status === 'signing') &&
-      (bet.placer === account || bet.challenger === account)) ||
+    ((bet.status === 'negotiation' && bet.placer === account) ||
+      (bet.status === 'signing' && bet.challenger === account) ||
       (bet.status === 'moderate' && bet.moderator === account))
 
   // Logic for showing the edit action button.

@@ -67,6 +67,7 @@ function EditBet(props: EditBetProps) {
       flexFlow: 'column',
       justifyContent: 'center',
       alignItems: 'flex-start',
+      margin: '24px 10px 0px 10px',
     },
     formInput: {
       height: '48px',
@@ -148,6 +149,27 @@ function EditBet(props: EditBetProps) {
               className="formInputs form-control"
               placeholder="Challenger address"
               id="challenger"
+            />
+          </div>
+        </div>
+        <div style={styles.row}>
+          <div style={styles.formInputWrapper}>
+            <label
+              style={{ ...styles.text, ...styles.formLabel }}
+              htmlFor="moderator"
+            >
+              Moderator address
+            </label>
+            <input
+              onChange={handleFormChange}
+              value={
+                Object.keys(localBet).length ? (localBet as Bet).moderator : ''
+              }
+              style={{ ...styles.formInput }}
+              type="text"
+              className="formInputs form-control"
+              placeholder="Moderator address"
+              id="mod"
             />
           </div>
         </div>

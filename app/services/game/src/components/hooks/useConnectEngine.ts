@@ -5,6 +5,7 @@
 **************************************** */
 
 import axios, { AxiosError } from 'axios'
+import { useNavigate } from 'react-router-dom'
 import { getAppConfig } from '../..'
 import { connectResponse } from '../../types/responses.d'
 import { apiUrl } from '../../utils/axiosConfig'
@@ -17,6 +18,7 @@ const axiosInstance = axios.create({
 })
 
 function useConnectEngine() {
+  const navigate = useNavigate()
   // connectToGameEngine connects to the game engine, and stores the token
   // in the sessionStorage. Takes an object with the following type:
   // { dateTime: string; sig: string }
@@ -31,7 +33,7 @@ function useConnectEngine() {
         `bearer ${connectResponse.data.token}`,
       )
       const getAppConfigFn = () => {
-        window.location.reload()
+        navigate('/')
       }
       getAppConfig.then(getAppConfigFn)
     }

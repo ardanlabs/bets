@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { StyleObject } from '../types/index.d'
 import Button from './Button'
@@ -11,9 +11,40 @@ function AppHeader() {
   // We create a local state to handle if the modals are shown or not
   const [addBetModal, setAddBetModal] = useState(false)
 
-  // Extracts the account from useEthersConnection hook
-  const { account } = useEthersConnection()
+  // Sets local state to trigger re-render when load is complete.
+  const [loading, setLoading] = useState(true)
+
   // ===========================================================================
+
+  // Extracts functions from useEthersConnection Hook
+  // useEthersConnection hook handles all connections to ethers.js
+  const { setSigner, account, setAccount, provider } = useEthersConnection()
+
+  // ===========================================================================
+  // Prompts user to connect to metamask usign the provider
+  // and registers it to useEthersConnection hook
+  async function init() {
+    const signer = provider.getSigner()
+
+    const signerAddress = await signer.getAddress()
+
+    setAccount(signerAddress)
+
+    setSigner(signer)
+  }
+
+  function accountsChangeUEFn() {
+    init().then(() => setLoading(false))
+  }
+
+  // The Effect Hook lets you perform side effects in function components
+  // In this case we use it to handle what happens when metamask accounts change.
+  // An empty dependecies array triggers useEffect only on the first render
+  // of the component. We disable the next line so eslint doens't complain about
+  // missing dependencies.
+
+  // eslint-disable-next-line
+  useEffect(accountsChangeUEFn, [])
 
   const headerHeight = '67px'
 
