@@ -19,7 +19,7 @@ CREATE TABLE bets (
     description       VARCHAR(240),
     terms             VARCHAR(240),
     amount            INT,
-    moderator_address VARCHAR(42)   NULL,
+    moderator_address VARCHAR(42),
     date_expired      TIMESTAMP,
     date_created      TIMESTAMP,
     date_updated      TIMESTAMP,
