@@ -15,10 +15,10 @@ CREATE TABLE bets (
     description       VARCHAR(240),
     terms             VARCHAR(240),
     amount            INT,
-    moderator_address UUID,
-    expiration        TIMESTAMP,
-    created           TIMESTAMP,
-    updated           TIMESTAMP,
+    moderator_address UUID          NULL,
+    date_expired      TIMESTAMP,
+    date_created      TIMESTAMP,
+    date_updated      TIMESTAMP,
 
     PRIMARY KEY (bet_id),
     FOREIGN KEY (moderator_address) REFERENCES accounts(address) ON DELETE CASCADE
@@ -38,11 +38,11 @@ CREATE TABLE bets_players (
 -- Version: 1.4
 -- Description: Create table bets_signatures
 CREATE TABLE bets_signatures (
-    bet_id     UUID,
-    address    VARCHAR(42),
-    nonce      INT,
-    signature  VARCHAR(66),
-    date       TIMESTAMP,
+    bet_id      UUID,
+    address     VARCHAR(42),
+    nonce       INT,
+    signature   VARCHAR(66),
+    date_signed TIMESTAMP,
 
     PRIMARY KEY (bet_id, player_id),
     FOREIGN KEY (bet_id) REFERENCES bets(bet_id) ON DELETE CASCADE,
