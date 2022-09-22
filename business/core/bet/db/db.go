@@ -187,7 +187,34 @@ func (s Store) QueryByModeratorAddress(ctx context.Context, moderatorAddress str
 	return bets, nil
 }
 
-// QueryByPlayerAddress
+// QueryByPlayerAddress retrieves all bets filtering by a player address.
 func (s Store) QueryByPlayerAddress(ctx context.Context, playerAddress string, pageNumber int, rowsPerPage int) ([]Bet, error) {
+	data := struct {
+		Offset        int    `db:"offset"`
+		RowsPerPage   int    `db:"rows_per_page"`
+		PlayerAddress string `db:"player_address"`
+	}{
+		Offset:        (pageNumber - 1) * rowsPerPage,
+		RowsPerPage:   rowsPerPage,
+		PlayerAddress: playerAddress,
+	}
 
+	const q = `
+	SELECT
+			bets.*
+	FROM
+			bets
+      LEFT JOIN bets_players ON bets_players.bet_id = bets.bet_id
+	WHERE
+			bets_players.address = :player_address
+	ORDER BY
+			bets.bet_id
+	OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY`
+
+	var bets []Bet
+	if err := database.NamedQuerySlice(ctx, s.log, s.db, q, data, &bets); err != nil {
+		return bets, fmt.Errorf("selecting player bets: %w", err)
+	}
+
+	return bets, nil
 }
