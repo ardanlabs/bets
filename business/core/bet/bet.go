@@ -97,55 +97,64 @@ func (c Core) CreateBet(ctx context.Context, nb NewBet, now time.Time) (Bet, err
 		return Bet{}, fmt.Errorf("validating data: %w", err)
 	}
 
-	// If moderator is provided, make sure it does exist as an account.
-	if nb.ModeratorAddress != "" {
-		acc := db.Account{
-			Address: nb.ModeratorAddress,
-			Nonce:   0,
+	var dbBet db.Bet
+
+	// This provides an example of how to execute a transaction if required.
+	tran := func(tx sqlx.ExtContext) error {
+		// If moderator is provided, make sure it does exist as an account.
+		if nb.ModeratorAddress != "" {
+			acc := db.Account{
+				Address: nb.ModeratorAddress,
+				Nonce:   0,
+			}
+			if err := c.store.Tran(tx).CreateAccount(ctx, acc); err != nil {
+				return fmt.Errorf("create moderator account: %w", err)
+			}
 		}
-		if err := c.store.CreateAccount(ctx, acc); err != nil {
-			return Bet{}, fmt.Errorf("create moderator account: %w", err)
+
+		// Ensures that the players accounts exists.
+		for _, player := range nb.Players {
+			acc := db.Account{
+				Address: player.Address,
+				Nonce:   0,
+			}
+			if err := c.store.Tran(tx).CreateAccount(ctx, acc); err != nil {
+				return fmt.Errorf("create player account: %w", err)
+			}
 		}
+
+		// Create the bet.
+		dbBet.ID = validate.GenerateID()
+		dbBet.Status = "negotiation"
+		dbBet.Description = nb.Description
+		dbBet.Terms = nb.Terms
+		dbBet.Amount = nb.Amount
+		dbBet.ModeratorAddress = nb.ModeratorAddress
+		dbBet.DateExpired = nb.DateExpired
+		dbBet.DateCreated = now
+		dbBet.DateUpdated = now
+
+		if err := c.store.Tran(tx).CreateBet(ctx, dbBet); err != nil {
+			return fmt.Errorf("create bet: %w", err)
+		}
+
+		// Add the players into the bet.
+		for _, player := range nb.Players {
+			acc := db.Player{
+				BetID:   dbBet.ID,
+				Address: player.Address,
+				InFavor: player.InFavor,
+			}
+			if err := c.store.Tran(tx).AddPlayer(ctx, acc); err != nil {
+				return fmt.Errorf("create player account: %w", err)
+			}
+		}
+
+		return nil
 	}
 
-	// Ensures that the players accounts exists.
-	for _, player := range nb.Players {
-		acc := db.Account{
-			Address: player.Address,
-			Nonce:   0,
-		}
-		if err := c.store.CreateAccount(ctx, acc); err != nil {
-			return Bet{}, fmt.Errorf("create player account: %w", err)
-		}
-	}
-
-	// Create the bet.
-	dbBet := db.Bet{
-		ID:               validate.GenerateID(),
-		Status:           "negotiation",
-		Description:      nb.Description,
-		Terms:            nb.Terms,
-		Amount:           nb.Amount,
-		ModeratorAddress: nb.ModeratorAddress,
-		DateExpired:      nb.DateExpired,
-		DateCreated:      now,
-		DateUpdated:      now,
-	}
-
-	if err := c.store.CreateBet(ctx, dbBet); err != nil {
-		return Bet{}, fmt.Errorf("create bet: %w", err)
-	}
-
-	// Add the players into the bet.
-	for _, player := range nb.Players {
-		acc := db.Player{
-			BetID:   dbBet.ID,
-			Address: player.Address,
-			InFavor: player.InFavor,
-		}
-		if err := c.store.AddPlayer(ctx, acc); err != nil {
-			return Bet{}, fmt.Errorf("create player account: %w", err)
-		}
+	if err := c.store.WithinTran(ctx, tran); err != nil {
+		return Bet{}, fmt.Errorf("tran: %w", err)
 	}
 
 	// Build the bet response content.

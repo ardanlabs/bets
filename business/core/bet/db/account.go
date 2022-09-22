@@ -13,7 +13,8 @@ func (s Store) CreateAccount(ctx context.Context, account Account) error {
 	INSERT INTO accounts
 			(address, nonce)
 	VALUES
-			(:address, :nonce)`
+			(:address, :nonce)
+  ON CONFLICT DO NOTHING;`
 
 	if err := database.NamedExecContext(ctx, s.log, s.db, q, account); err != nil {
 		return fmt.Errorf("inserting account: %w", err)
@@ -30,7 +31,7 @@ func (s Store) UpdateAccount(ctx context.Context, account Account) error {
 	SET
 			nonce = :nonce
 	WHERE
-			address = :address`
+			address = :address;`
 
 	if err := database.NamedExecContext(ctx, s.log, s.db, q, account); err != nil {
 		return fmt.Errorf("updating account: %w", err)
@@ -56,7 +57,7 @@ func (s Store) QueryAccounts(ctx context.Context, pageNumber, rowsPerPage int) (
 			accounts
 	ORDER BY
 			address
-	OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY`
+	OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY;`
 
 	var accounts []Account
 	if err := database.NamedQuerySlice(ctx, s.log, s.db, q, data, &accounts); err != nil {

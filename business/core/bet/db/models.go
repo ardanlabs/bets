@@ -8,8 +8,6 @@ type Account struct {
 	Nonce   int    `db:"nonce"`
 }
 
-// ============================================================================
-
 // Bet represents an individual bet.
 type Bet struct {
 	ID               string    `db:"bet_id"`
