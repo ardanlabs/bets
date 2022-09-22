@@ -10,10 +10,21 @@ import (
 // AddSignature adds a new player signature to an existing bet.
 func (s Store) AddSignature(ctx context.Context, signature BetSignature) error {
 	const q = `
+	START TRANSACTION;
+
+	-- Ensure the player exists in the accounts table.
+	INSERT INTO accounts
+			(address, nonce)
+	VALUES
+			(:address, 0)
+	ON CONFLICT DO NOTHING;
+
+	-- Add the player's signature to the bet.
 	INSERT INTO bets_signatures
 			(bet_id, address, nonce, signature, date_signed)
 	VALUES
-			(:bet_id, :address, :nonce, :signature, :date_signed)`
+			(:bet_id, :address, :nonce, :signature, :date_signed);
+	COMMIT;`
 
 	if err := database.NamedExecContext(ctx, s.log, s.db, q, signature); err != nil {
 		return fmt.Errorf("adding signature to bet: %w", err)
