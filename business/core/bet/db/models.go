@@ -23,16 +23,16 @@ type Bet struct {
 	DateUpdated      time.Time `db:"date_updated"`
 }
 
-// BetPlayer represents the connection between a Bet and an Account that is in
+// Player represents the connection between a Bet and an Account that is in
 // a player role.
-type BetPlayer struct {
+type Player struct {
 	BetID   string `db:"bet_id"`
 	Address string `db:"address"`
 	InFavor bool   `db:"in_favor"`
 }
 
-// BetSignature represents an individual signature by an Account on a Bet.
-type BetSignature struct {
+// Signature represents an individual signature by an Account on a Bet.
+type Signature struct {
 	BetID      string    `db:"bet_id"`
 	Address    string    `db:"address"`
 	Nonce      int       `db:"nonce"`

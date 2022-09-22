@@ -138,7 +138,7 @@ func (c Core) CreateBet(ctx context.Context, nb NewBet, now time.Time) (Bet, err
 
 	// Add the players into the bet.
 	for _, player := range nb.Players {
-		acc := db.BetPlayer{
+		acc := db.Player{
 			BetID:   dbBet.ID,
 			Address: player.Address,
 			InFavor: player.InFavor,

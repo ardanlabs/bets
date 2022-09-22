@@ -8,21 +8,21 @@ import (
 
 // Bet represents an individual bet.
 type Bet struct {
-	ID               string      `json:"id"`
-	Status           string      `json:"status"`
-	Description      string      `json:"description"`
-	Terms            string      `json:"terms"`
-	Amount           int         `json:"amount"`
-	ModeratorAddress string      `json:"moderator_address"`
-	Players          []BetPlayer `json:"players"`
-	DateExpired      time.Time   `json:"date_expired"`
-	DateCreated      time.Time   `json:"date_created"`
-	DateUpdated      time.Time   `json:"date_updated"`
+	ID               string    `json:"id"`
+	Status           string    `json:"status"`
+	Description      string    `json:"description"`
+	Terms            string    `json:"terms"`
+	Amount           int       `json:"amount"`
+	ModeratorAddress string    `json:"moderator_address"`
+	Players          []Player  `json:"players"`
+	DateExpired      time.Time `json:"date_expired"`
+	DateCreated      time.Time `json:"date_created"`
+	DateUpdated      time.Time `json:"date_updated"`
 }
 
-// BetPlayer represents the connection between a Bet and an Account that is in
+// Player represents the connection between a Bet and an Account that is in
 // a player role.
-type BetPlayer struct {
+type Player struct {
 	BetID   string `db:"bet_id"`
 	Address string `db:"address"`
 	InFavor bool   `db:"in_favor"`
@@ -30,17 +30,17 @@ type BetPlayer struct {
 
 // NewBet is what we require from clients when adding a Bet.
 type NewBet struct {
-	Description      string         `json:"description"`
-	Terms            string         `json:"terms"`
-	Amount           int            `json:"amount"`
-	ModeratorAddress string         `json:"moderator_address"`
-	Players          []NewBetPlayer `json:"players" validate:"required"`
-	DateExpired      time.Time      `json:"date_expired"`
+	Description      string      `json:"description"`
+	Terms            string      `json:"terms"`
+	Amount           int         `json:"amount"`
+	ModeratorAddress string      `json:"moderator_address"`
+	Players          []NewPlayer `json:"players" validate:"required"`
+	DateExpired      time.Time   `json:"date_expired"`
 }
 
-// NewBetPlayer represents the connection between a new Bet and an Account that is in
+// NewPlayer represents the connection between a new Bet and an Account that is in
 // a player role.
-type NewBetPlayer struct {
+type NewPlayer struct {
 	Address string `db:"address"`
 	InFavor bool   `db:"in_favor"`
 }

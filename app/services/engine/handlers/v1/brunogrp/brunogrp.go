@@ -110,7 +110,7 @@ func (h *Handlers) Create(ctx context.Context, w http.ResponseWriter, r *http.Re
 		Terms:            "Has to be in the us.",
 		Amount:           30,
 		ModeratorAddress: "0x39249126d90671284cd06495d19C04DD0e54d371",
-		Players: []bet.NewBetPlayer{
+		Players: []bet.NewPlayer{
 			{Address: "0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC", InFavor: true},
 			{Address: "0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7", InFavor: false},
 		},
