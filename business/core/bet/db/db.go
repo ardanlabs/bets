@@ -125,7 +125,7 @@ func (s Store) Query(ctx context.Context, pageNumber int, rowsPerPage int) ([]Be
 
 	var bets []Bet
 	if err := database.NamedQuerySlice(ctx, s.log, s.db, q, data, &bets); err != nil {
-		return fmt.Errorf("selecting bets: %w", err)
+		return bets, fmt.Errorf("selecting bets: %w", err)
 	}
 
 	return bets, nil
@@ -181,7 +181,7 @@ func (s Store) QueryByModeratorAddress(ctx context.Context, moderatorAddress str
 
 	var bets []Bet
 	if err := database.NamedQuerySlice(ctx, s.log, s.db, q, data, &bets); err != nil {
-		return fmt.Errorf("selecting moderator bets: %w", err)
+		return bets, fmt.Errorf("selecting moderator bets: %w", err)
 	}
 
 	return bets, nil
