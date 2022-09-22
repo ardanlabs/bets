@@ -1,14 +1,18 @@
 package bet
 
 import (
-	"context"
-	"fmt"
-	"time"
+	"errors"
 
 	"github.com/ardanlabs/bets/business/core/bet/db"
-	"github.com/ardanlabs/bets/business/sys/validate"
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
+)
+
+// Set of error variables for CRUD operations.
+var (
+	ErrNotFound       = errors.New("account not found")
+	ErrInvalidAddress = errors.New("address is not in its proper form")
+	ErrInvalidNonce   = errors.New("nonce must be 1 greater than previous nonce")
 )
 
 // Core manages the set of APIs for product access.
@@ -21,15 +25,4 @@ func NewCore(log *zap.SugaredLogger, sqlxDB *sqlx.DB) Core {
 	return Core{
 		store: db.NewStore(log, sqlxDB),
 	}
-}
-
-// Create adds a Bet to the database.
-func (c Core) Create(ctx context.Context, nb NewBet, now time.Time) (Bet, error) {
-	if err := validate.Check(nb); err != nil {
-		return Bet{}, fmt.Errorf("validating data: %w", err)
-	}
-	dbBet := db.Bet{
-		ID: nb.BetID,
-	}
-	return betFromDB(dbBet), nil
 }

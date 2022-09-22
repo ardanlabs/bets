@@ -5,47 +5,10 @@ import (
 	"fmt"
 
 	"github.com/ardanlabs/bets/business/sys/database"
-	"github.com/jmoiron/sqlx"
-	"go.uber.org/zap"
 )
 
-// Store manages the set of APIs for bet access.
-type Store struct {
-	log          *zap.SugaredLogger
-	tr           database.Transactor
-	db           sqlx.ExtContext
-	isWithinTran bool
-}
-
-// NewStore constructs a data for api access.
-func NewStore(log *zap.SugaredLogger, db *sqlx.DB) Store {
-	return Store{
-		log: log,
-		tr:  db,
-		db:  db,
-	}
-}
-
-// WithinTran runs passed function and do commit/rollback at the end.
-func (s Store) WithinTran(ctx context.Context, fn func(sqlx.ExtContext) error) error {
-	if s.isWithinTran {
-		fn(s.db)
-	}
-	return database.WithinTran(ctx, s.log, s.tr, fn)
-}
-
-// Tran return new Store with transaction in it.
-func (s Store) Tran(tx sqlx.ExtContext) Store {
-	return Store{
-		log:          s.log,
-		tr:           s.tr,
-		db:           tx,
-		isWithinTran: true,
-	}
-}
-
-// Create inserts a new Account into the database.
-func (s Store) Create(ctx context.Context, account Account) error {
+// CreateAccount inserts a new Account into the database.
+func (s Store) CreateAccount(ctx context.Context, account Account) error {
 	const q = `
 	INSERT INTO accounts
 			(address, nonce)
@@ -59,8 +22,8 @@ func (s Store) Create(ctx context.Context, account Account) error {
 	return nil
 }
 
-// Update updates an existing account in the database.
-func (s Store) Update(ctx context.Context, account Account) error {
+// UpdateAccount updates an existing account in the database.
+func (s Store) UpdateAccount(ctx context.Context, account Account) error {
 	const q = `
 	UPDATE
 			accounts
@@ -76,8 +39,8 @@ func (s Store) Update(ctx context.Context, account Account) error {
 	return nil
 }
 
-// Query retrieves a list of existing accounts from the database.
-func (s Store) Query(ctx context.Context, pageNumber, rowsPerPage int) ([]Account, error) {
+// QueryAccounts retrieves a list of existing accounts from the database.
+func (s Store) QueryAccounts(ctx context.Context, pageNumber, rowsPerPage int) ([]Account, error) {
 	data := struct {
 		Offset      int `db:"offset"`
 		RowsPerPage int `db:"rows_per_page"`
@@ -103,8 +66,8 @@ func (s Store) Query(ctx context.Context, pageNumber, rowsPerPage int) ([]Accoun
 	return accounts, nil
 }
 
-// QueryByAddress retrieves an account by address.
-func (s Store) QueryByAddress(ctx context.Context, address string) (Account, error) {
+// QueryAccountsByAddress retrieves an account by address.
+func (s Store) QueryAccountByAddress(ctx context.Context, address string) (Account, error) {
 	data := struct {
 		Address string `db:"address"`
 	}{

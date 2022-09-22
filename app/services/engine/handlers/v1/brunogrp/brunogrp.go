@@ -108,7 +108,7 @@ func (h *Handlers) Create(ctx context.Context, w http.ResponseWriter, r *http.Re
 		BetID: uuid.NewString(),
 	}
 
-	bet, err := h.Bet.Create(ctx, nb, v.Now)
+	bet, err := h.Bet.CreateBet(ctx, nb, v.Now)
 	if err != nil {
 		return fmt.Errorf("creating new bet, newBet[%+v]: %w", nb, err)
 	}
