@@ -11,10 +11,21 @@ import (
 // CreateBet inserts a new Bet into the database.
 func (s Store) CreateBet(ctx context.Context, bet Bet) error {
 	const q = `
+	START TRANSACTION;
+
+	-- Ensure the moderator exists in the accounts table.
+	INSERT INTO accounts
+			(address, nonce)
+	VALUES
+			(:moderator_address, 0)
+	ON CONFLICT DO NOTHING;
+
+	-- Create the bet.
 	INSERT INTO bets
 			(bet_id, status_id, description, terms, amount, moderator_address, date_expired, date_created, date_updated)
 	VALUES
-			(:bet_id, :status_id, :description, :terms, :amount, :moderator_address, :date_expired, :date_created, :date_updated)`
+			(:bet_id, :status_id, :description, :terms, :amount, :moderator_address, :date_expired, :date_created, :date_updated);
+	COMMIT;`
 
 	if err := database.NamedExecContext(ctx, s.log, s.db, q, bet); err != nil {
 		return fmt.Errorf("inserting bet: %w", err)
@@ -26,6 +37,16 @@ func (s Store) CreateBet(ctx context.Context, bet Bet) error {
 // UpdateBet replaces a bet in the database.
 func (s Store) UpdateBet(ctx context.Context, bet Bet) error {
 	const q = `
+	START TRANSACTION;
+
+	-- Ensure the moderator exists in the accounts table.
+	INSERT INTO accounts
+			(address, nonce)
+	VALUES
+			(:moderator_address, 0)
+	ON CONFLICT DO NOTHING;
+
+	-- Update the bet.
 	UPDATE
 			bets
 	SET
@@ -38,7 +59,8 @@ func (s Store) UpdateBet(ctx context.Context, bet Bet) error {
 			"date_created"      = :date_created,
 			"date_updated"      = :date_updated
 	WHERE
-			"bet_id" = :bet_id`
+			"bet_id" = :bet_id;
+	COMMIT;`
 
 	if err := database.NamedExecContext(ctx, s.log, s.db, q, bet); err != nil {
 		return fmt.Errorf("updating bet: %w", err)
