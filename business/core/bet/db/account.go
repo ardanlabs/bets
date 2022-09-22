@@ -14,7 +14,7 @@ func (s Store) CreateAccount(ctx context.Context, account Account) error {
 			(address, nonce)
 	VALUES
 			(:address, :nonce)
-  ON CONFLICT DO NOTHING;`
+	ON CONFLICT DO NOTHING;`
 
 	if err := database.NamedExecContext(ctx, s.log, s.db, q, account); err != nil {
 		return fmt.Errorf("inserting account: %w", err)

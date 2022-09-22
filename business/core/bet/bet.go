@@ -7,12 +7,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/ardanlabs/bets/business/core/bet/db"
 	"github.com/ardanlabs/bets/business/sys/database"
 	"github.com/ardanlabs/bets/business/sys/validate"
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
-	"time"
 )
 
 // Set of error variables for CRUD operations.
@@ -99,8 +100,8 @@ func (c Core) CreateBet(ctx context.Context, nb NewBet, now time.Time) (Bet, err
 
 	var dbBet db.Bet
 
-	// This provides an example of how to execute a transaction if required.
 	tran := func(tx sqlx.ExtContext) error {
+
 		// If moderator is provided, make sure it does exist as an account.
 		if nb.ModeratorAddress != "" {
 			acc := db.Account{

@@ -168,7 +168,7 @@ func (s Store) QueryBetByPlayerAddress(ctx context.Context, playerAddress string
 			bets.*
 	FROM
 			bets
-      LEFT JOIN bets_players ON bets_players.bet_id = bets.bet_id
+	LEFT JOIN bets_players ON bets_players.bet_id = bets.bet_id
 	WHERE
 			bets_players.address = :player_address
 	ORDER BY
