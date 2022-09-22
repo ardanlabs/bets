@@ -2,7 +2,6 @@ package bet
 
 import (
 	"errors"
-
 	"github.com/ardanlabs/bets/business/core/bet/db"
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
