@@ -161,9 +161,9 @@ func (c Core) CreateBet(ctx context.Context, nb NewBet, now time.Time) (Bet, err
 		DateUpdated:      dbBet.DateUpdated,
 	}
 
-	var players []BetPlayer
+	var players []Player
 	for _, player := range nb.Players {
-		players = append(players, BetPlayer{
+		players = append(players, Player{
 			BetID:   dbBet.ID,
 			Address: player.Address,
 			InFavor: player.InFavor,
