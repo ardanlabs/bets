@@ -24,6 +24,16 @@ type NewBet struct {
 	BetID string `json:"betId" validate:"required"`
 }
 
-func betFromDB(bet db.Bet) Bet {
-	return Bet(bet)
+// ============================================================================
+
+func toBet(dbBet db.Bet) Bet {
+	return Bet(dbBet)
+}
+
+func toBetSlice(dbBets []db.Bet) []Bet {
+	bets := make([]Bet, len(dbBets))
+	for i, dbBet := range dbBets {
+		bets[i] = toBet(dbBet)
+	}
+	return bets
 }

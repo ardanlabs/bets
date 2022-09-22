@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Store manages the set of APIs for product access.
+// Store manages the set of APIs for bet access.
 type Store struct {
 	log          *zap.SugaredLogger
 	tr           database.Transactor
