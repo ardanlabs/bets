@@ -47,20 +47,6 @@ type NewBetPlayer struct {
 
 // ============================================================================
 
-func toBet(dbBet db.Bet) Bet {
-	return Bet(dbBet)
-}
-
-func toBetSlice(dbBets []db.Bet) []Bet {
-	bets := make([]Bet, len(dbBets))
-	for i, dbBet := range dbBets {
-		bets[i] = toBet(dbBet)
-	}
-	return bets
-}
-
-// ============================================================================
-
 // Account represents an individual account
 type Account struct {
 	Address string `json:"address"`

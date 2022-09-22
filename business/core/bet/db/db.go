@@ -1,12 +1,101 @@
+// Package db contains bet/account/player related CRUD functionality.
 package db
 
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/ardanlabs/bets/business/sys/database"
+	"time"
 )
+
+// =========================================================================
+// Account Support
+
+// CreateAccount inserts a new Account into the database.
+func (s Store) CreateAccount(ctx context.Context, account Account) error {
+	const q = `
+	INSERT INTO accounts
+			(address, nonce)
+	VALUES
+			(:address, :nonce)`
+
+	if err := database.NamedExecContext(ctx, s.log, s.db, q, account); err != nil {
+		return fmt.Errorf("inserting account: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateAccount updates an existing account in the database.
+func (s Store) UpdateAccount(ctx context.Context, account Account) error {
+	const q = `
+	UPDATE
+			accounts
+	SET
+			nonce = :nonce
+	WHERE
+			address = :address`
+
+	if err := database.NamedExecContext(ctx, s.log, s.db, q, account); err != nil {
+		return fmt.Errorf("updating account: %w", err)
+	}
+
+	return nil
+}
+
+// QueryAccounts retrieves a list of existing accounts from the database.
+func (s Store) QueryAccounts(ctx context.Context, pageNumber, rowsPerPage int) ([]Account, error) {
+	data := struct {
+		Offset      int `db:"offset"`
+		RowsPerPage int `db:"rows_per_page"`
+	}{
+		Offset:      (pageNumber - 1) * rowsPerPage,
+		RowsPerPage: rowsPerPage,
+	}
+
+	const q = `
+	SELECT
+			*
+	FROM
+			accounts
+	ORDER BY
+			address
+	OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY`
+
+	var accounts []Account
+	if err := database.NamedQuerySlice(ctx, s.log, s.db, q, data, &accounts); err != nil {
+		return []Account{}, fmt.Errorf("selecting accounts: %w", err)
+	}
+
+	return accounts, nil
+}
+
+// QueryAccountByAddress QueryAccountsByAddress retrieves an account by address.
+func (s Store) QueryAccountByAddress(ctx context.Context, address string) (Account, error) {
+	data := struct {
+		Address string `db:"address"`
+	}{
+		Address: address,
+	}
+
+	const q = `
+	SELECT
+			*
+	FROM
+			accounts
+	WHERE
+			address = :address`
+
+	var account Account
+	if err := database.NamedQueryStruct(ctx, s.log, s.db, q, data, &account); err != nil {
+		return Account{}, fmt.Errorf("selecting account[%q]: %w", address, err)
+	}
+
+	return account, nil
+}
+
+// =========================================================================
+// Bet Support
 
 // CreateBet inserts a new Bet into the database.
 func (s Store) CreateBet(ctx context.Context, bet Bet) error {
@@ -270,4 +359,124 @@ func (s Store) QueryBetByExpiration(ctx context.Context, start, end time.Time, p
 	}
 
 	return bets, nil
+}
+
+// =========================================================================
+// Player Support
+
+// AddPlayer adds a new player to an existing bet.
+func (s Store) AddPlayer(ctx context.Context, player BetPlayer) error {
+	const q = `
+	START TRANSACTION;
+
+	-- Ensure the player exists in the accounts table.
+	INSERT INTO accounts
+			(address, nonce)
+	VALUES
+			(:address, 0)
+	ON CONFLICT DO NOTHING;
+
+	-- Add the player to the bet.
+	INSERT INTO bets_players
+			(bet_id, address, in_favor)
+	VALUES
+			(:bet_id, :address, :in_favor);
+	COMMIT;`
+
+	if err := database.NamedExecContext(ctx, s.log, s.db, q, player); err != nil {
+		return fmt.Errorf("adding player to bet: %w", err)
+	}
+
+	return nil
+}
+
+// QueryBetPlayers queries bets_players by bet ID.
+func (s Store) QueryBetPlayers(ctx context.Context, betID string, pageNumber int, rowsPerPage int) ([]BetPlayer, error) {
+	data := struct {
+		Offset      int    `db:"offset"`
+		RowsPerPage int    `db:"rows_per_page"`
+		BetID       string `db:"bet_id"`
+	}{
+		Offset:      (pageNumber - 1) * rowsPerPage,
+		RowsPerPage: rowsPerPage,
+		BetID:       betID,
+	}
+
+	const q = `
+	SELECT
+			*
+	FROM
+			bets_players
+	WHERE
+			bet_id = :bet_id
+	ORDER BY
+			address
+	OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY`
+
+	var players []BetPlayer
+	if err := database.NamedQuerySlice(ctx, s.log, s.db, q, data, &players); err != nil {
+		return []BetPlayer{}, fmt.Errorf("selecting players by bet: %w", err)
+	}
+
+	return players, nil
+}
+
+// =========================================================================
+// Signature Support
+
+// AddSignature adds a new player signature to an existing bet.
+func (s Store) AddSignature(ctx context.Context, signature BetSignature) error {
+	const q = `
+	START TRANSACTION;
+
+	-- Ensure the player exists in the accounts table.
+	INSERT INTO accounts
+			(address, nonce)
+	VALUES
+			(:address, 0)
+	ON CONFLICT DO NOTHING;
+
+	-- Add the player's signature to the bet.
+	INSERT INTO bets_signatures
+			(bet_id, address, nonce, signature, date_signed)
+	VALUES
+			(:bet_id, :address, :nonce, :signature, :date_signed);
+	COMMIT;`
+
+	if err := database.NamedExecContext(ctx, s.log, s.db, q, signature); err != nil {
+		return fmt.Errorf("adding signature to bet: %w", err)
+	}
+
+	return nil
+}
+
+// QueryBetSignatures queries bets_signatures by bet ID.
+func (s Store) QueryBetSignatures(ctx context.Context, betID string, pageNumber int, rowsPerPage int) ([]BetSignature, error) {
+	data := struct {
+		Offset      int    `db:"offset"`
+		RowsPerPage int    `db:"rows_per_page"`
+		BetID       string `db:"bet_id"`
+	}{
+		Offset:      (pageNumber - 1) * rowsPerPage,
+		RowsPerPage: rowsPerPage,
+		BetID:       betID,
+	}
+
+	const q = `
+	SELECT
+			*
+	FROM
+			bets_signatures
+	WHERE
+			bet_id = :bet_id
+	ORDER BY
+			address
+	OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY`
+
+	var signatures []BetSignature
+	if err := database.NamedQuerySlice(ctx, s.log, s.db, q, data, &signatures); err != nil {
+		return []BetSignature{}, fmt.Errorf("selecting signatures by bet: %w", err)
+	}
+
+	return signatures, nil
 }
