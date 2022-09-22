@@ -3,11 +3,11 @@ package brunogrp
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net/http"
 
 	"github.com/ardanlabs/bets/business/core/bet"
 	"github.com/ardanlabs/bets/foundation/web"
+	"github.com/google/uuid"
 )
 
 // Handlers manages the set of user endpoints.
@@ -22,7 +22,7 @@ type Player struct {
 
 // Bet struct type
 type Bet struct {
-	ID             int      `json:"id"`
+	ID             string   `json:"id"`
 	Status         string   `json:"status"`
 	Players        []Player `json:"players"`
 	Moderator      string   `json:"moderator"`
@@ -42,7 +42,7 @@ func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Req
 	}
 	bets := []Bet{
 		{
-			ID:             1,
+			ID:             uuid.NewString(),
 			Status:         "signing",
 			Players:        players,
 			Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
@@ -52,7 +52,7 @@ func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Req
 			Amount:         30,
 		},
 		{
-			ID:             2,
+			ID:             uuid.NewString(),
 			Status:         "moderate",
 			Players:        players,
 			Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
@@ -62,7 +62,7 @@ func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Req
 			Amount:         30,
 		},
 		{
-			ID:             3,
+			ID:             uuid.NewString(),
 			Status:         "open",
 			Players:        players,
 			Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
@@ -85,7 +85,7 @@ func (h *Handlers) QueryByID(ctx context.Context, w http.ResponseWriter, r *http
 	}
 
 	bet := Bet{
-		ID:             1,
+		ID:             uuid.NewString(),
 		Status:         "signing",
 		Players:        players,
 		Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
@@ -105,7 +105,7 @@ func (h *Handlers) Create(ctx context.Context, w http.ResponseWriter, r *http.Re
 	}
 
 	nb := bet.NewBet{
-		BetID: rand.Intn(100),
+		BetID: uuid.NewString(),
 	}
 
 	bet, err := h.Bet.Create(ctx, nb, v.Now)
