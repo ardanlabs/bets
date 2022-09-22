@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ardanlabs/bets/business/sys/database"
 	"github.com/jmoiron/sqlx"
@@ -181,7 +182,7 @@ func (s Store) QueryByModeratorAddress(ctx context.Context, moderatorAddress str
 
 	var bets []Bet
 	if err := database.NamedQuerySlice(ctx, s.log, s.db, q, data, &bets); err != nil {
-		return bets, fmt.Errorf("selecting moderator bets: %w", err)
+		return []Bet{}, fmt.Errorf("selecting moderator bets: %w", err)
 	}
 
 	return bets, nil
@@ -213,8 +214,173 @@ func (s Store) QueryByPlayerAddress(ctx context.Context, playerAddress string, p
 
 	var bets []Bet
 	if err := database.NamedQuerySlice(ctx, s.log, s.db, q, data, &bets); err != nil {
-		return bets, fmt.Errorf("selecting player bets: %w", err)
+		return []Bet{}, fmt.Errorf("selecting player bets: %w", err)
 	}
 
 	return bets, nil
+}
+
+// QueryByStatus queries bets by their status.
+func (s Store) QueryByStatus(ctx context.Context, status string, pageNumber int, rowsPerPage int) ([]Bet, error) {
+	data := struct {
+		Offset      int    `db:"offset"`
+		RowsPerPage int    `db:"rows_per_page"`
+		Status      string `db:"status"`
+	}{
+		Offset:      (pageNumber - 1) * rowsPerPage,
+		RowsPerPage: rowsPerPage,
+		Status:      status,
+	}
+
+	const q = `
+	SELECT
+			*
+	FROM
+			bets
+	WHERE
+			status = :status
+	ORDER BY
+			bet_id
+	OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY`
+
+	var bets []Bet
+	if err := database.NamedQuerySlice(ctx, s.log, s.db, q, data, &bets); err != nil {
+		return []Bet{}, fmt.Errorf("selecting bets by status: %w", err)
+	}
+
+	return bets, nil
+}
+
+// QueryByExpiration queries bets by expiration date by providing a start and
+// end time.
+func (s Store) QueryByExpiration(ctx context.Context, start, end time.Time, pageNumber int, rowsPerPage int) ([]Bet, error) {
+	data := struct {
+		Offset      int       `db:"offset"`
+		RowsPerPage int       `db:"rows_per_page"`
+		Start       time.Time `db:"start"`
+		End         time.Time `db:"end"`
+	}{
+		Offset:      (pageNumber - 1) * rowsPerPage,
+		RowsPerPage: rowsPerPage,
+		Start:       start,
+		End:         end,
+	}
+
+	const q = `
+	SELECT
+			*
+	FROM
+			bets
+	WHERE
+			date_expired >= :start
+			AND
+			date_expired <= :end
+	ORDER BY
+			bet_id
+	OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY`
+
+	var bets []Bet
+	if err := database.NamedQuerySlice(ctx, s.log, s.db, q, data, &bets); err != nil {
+		return []Bet{}, fmt.Errorf("selecting bets by expiration: %w", err)
+	}
+
+	return bets, nil
+}
+
+// ============================================================================
+// PLAYERS
+
+// AddPlayer adds a new player to an existing bet.
+func (s Store) AddPlayer(ctx context.Context, player BetPlayer) error {
+	const q = `
+	INSERT INTO bets_players
+			(bet_id, address, in_favor)
+	VALUES
+			(:bet_id, :address, :in_favor)`
+
+	if err := database.NamedExecContext(ctx, s.log, s.db, q, player); err != nil {
+		return fmt.Errorf("adding player to bet: %w", err)
+	}
+
+	return nil
+}
+
+// QueryBetPlayers queries bets_players by bet ID.
+func (s Store) QueryBetPlayers(ctx context.Context, betID string, pageNumber int, rowsPerPage int) ([]BetPlayer, error) {
+	data := struct {
+		Offset      int    `db:"offset"`
+		RowsPerPage int    `db:"rows_per_page"`
+		BetID       string `db:"bet_id"`
+	}{
+		Offset:      (pageNumber - 1) * rowsPerPage,
+		RowsPerPage: rowsPerPage,
+		BetID:       betID,
+	}
+
+	const q = `
+	SELECT
+			*
+	FROM
+			bets_players
+	WHERE
+			bet_id = :bet_id
+	ORDER BY
+			address
+	OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY`
+
+	var players []BetPlayer
+	if err := database.NamedQuerySlice(ctx, s.log, s.db, q, data, &players); err != nil {
+		return []BetPlayer{}, fmt.Errorf("selecting players by bet: %w", err)
+	}
+
+	return players, nil
+}
+
+// ============================================================================
+// SIGNATURES
+
+// AddSignature adds a new player signature to an existing bet.
+func (s Store) AddSignature(ctx context.Context, signature BetSignature) error {
+	const q = `
+	INSERT INTO bets_signatures
+			(bet_id, address, nonce, signature, date_signed)
+	VALUES
+			(:bet_id, :address, :nonce, :signature, :date_signed)`
+
+	if err := database.NamedExecContext(ctx, s.log, s.db, q, signature); err != nil {
+		return fmt.Errorf("adding signature to bet: %w", err)
+	}
+
+	return nil
+}
+
+// QueryBetSignatures queries bets_signatures by bet ID.
+func (s Store) QueryBetSignatures(ctx context.Context, betID string, pageNumber int, rowsPerPage int) ([]BetSignature, error) {
+	data := struct {
+		Offset      int    `db:"offset"`
+		RowsPerPage int    `db:"rows_per_page"`
+		BetID       string `db:"bet_id"`
+	}{
+		Offset:      (pageNumber - 1) * rowsPerPage,
+		RowsPerPage: rowsPerPage,
+		BetID:       betID,
+	}
+
+	const q = `
+	SELECT
+			*
+	FROM
+			bets_signatures
+	WHERE
+			bet_id = :bet_id
+	ORDER BY
+			address
+	OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY`
+
+	var signatures []BetSignature
+	if err := database.NamedQuerySlice(ctx, s.log, s.db, q, data, &signatures); err != nil {
+		return []BetSignature{}, fmt.Errorf("selecting signatures by bet: %w", err)
+	}
+
+	return signatures, nil
 }

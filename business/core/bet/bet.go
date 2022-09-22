@@ -3,11 +3,12 @@ package bet
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/ardanlabs/bets/business/core/bet/db"
 	"github.com/ardanlabs/bets/business/sys/validate"
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
-	"time"
 )
 
 // Core manages the set of APIs for product access.
@@ -30,5 +31,5 @@ func (c Core) Create(ctx context.Context, nb NewBet, now time.Time) (Bet, error)
 	dbBet := db.Bet{
 		ID: nb.BetID,
 	}
-	return Bet(dbBet), nil
+	return betFromDB(dbBet), nil
 }
