@@ -210,17 +210,70 @@ func (h *Handlers) CreateBet(ctx context.Context, w http.ResponseWriter, r *http
 		return web.NewShutdownError("web value missing from context")
 	}
 
-	var nb bet.NewBet
-	if err := web.Decode(r, &nb); err != nil {
+	var newBetPayload NewBet
+	if err := web.Decode(r, &newBetPayload); err != nil {
 		return fmt.Errorf("unable to decode payload: %w", err)
 	}
 
-	bet, err := h.Bet.CreateBet(ctx, nb, v.Now)
+	newBet := bet.NewBet{
+		Description:      newBetPayload.Description,
+		Terms:            newBetPayload.Terms,
+		Amount:           newBetPayload.Amount,
+		ModeratorAddress: newBetPayload.ModeratorAddress,
+		DateExpired:      time.Unix(int64(newBetPayload.DateExpired), 0),
+	}
+
+	var newPlayers []bet.NewPlayer
+	for _, player := range newBetPayload.Players {
+		newPlayers = append(newPlayers, bet.NewPlayer(player))
+	}
+	newBet.Players = newPlayers
+
+	bet, err := h.Bet.CreateBet(ctx, newBet, v.Now)
 	if err != nil {
-		return fmt.Errorf("creating new bet, newBet[%+v]: %w", nb, err)
+		return fmt.Errorf("creating new bet, newBet[%+v]: %w", newBet, err)
 	}
 
 	return web.Respond(ctx, w, bet, http.StatusCreated)
+}
+
+// UpdateBet updates a bet in the system.
+func (h *Handlers) UpdateBet(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	v, err := web.GetValues(ctx)
+	if err != nil {
+		return web.NewShutdownError("web value missing from context")
+	}
+
+	var upBetPayload UpdateBet
+	if err := web.Decode(r, &upBetPayload); err != nil {
+		return fmt.Errorf("unable to decode payload: %w", err)
+	}
+
+	id := web.Param(r, "id")
+
+	upBet := bet.UpdateBet{
+		Description:      upBetPayload.Description,
+		Terms:            upBetPayload.Terms,
+		Amount:           upBetPayload.Amount,
+		ModeratorAddress: upBetPayload.ModeratorAddress,
+	}
+
+	if upBetPayload.DateExpired != nil {
+		upBet.DateExpired = time.Unix(int64(*upBetPayload.DateExpired), 0)
+	}
+
+	if err := h.Bet.UpdateBet(ctx, id, upBet, v.Now); err != nil {
+		switch {
+		case errors.Is(err, bet.ErrInvalidID):
+			return v1Web.NewRequestError(err, http.StatusBadRequest)
+		case errors.Is(err, bet.ErrNotFound):
+			return v1Web.NewRequestError(err, http.StatusNotFound)
+		default:
+			return fmt.Errorf("ID[%s] Bet[%+v]: %w", id, &upBet, err)
+		}
+	}
+
+	return web.Respond(ctx, w, nil, http.StatusNoContent)
 }
 
 // QueryBet returns a list of bets with paging.
