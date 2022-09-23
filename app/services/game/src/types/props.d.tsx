@@ -108,5 +108,5 @@ export interface BetStatusProps {
 export interface SuccessModalProps {
   show: boolean
   setShow: React.Dispatch<React.SetStateAction<boolean>>
-  betId?: number
+  betId?: string
 }

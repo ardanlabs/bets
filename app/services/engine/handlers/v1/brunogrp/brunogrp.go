@@ -23,14 +23,14 @@ type Player struct {
 
 // Bet struct type
 type Bet struct {
-	ID             string   `json:"id"`
-	Status         string   `json:"status"`
-	Players        []Player `json:"players"`
-	Moderator      string   `json:"moderator"`
-	Description    string   `json:"description"`
-	Terms          string   `json:"terms"`
-	ExpirationDate string   `json:"expirationDate"`
-	Amount         int      `json:"amount"`
+	ID             string    `json:"id"`
+	Status         string    `json:"status"`
+	Players        []Player  `json:"players"`
+	Moderator      string    `json:"moderator"`
+	Description    string    `json:"description"`
+	Terms          string    `json:"terms"`
+	ExpirationDate time.Time `json:"expirationDate"`
+	Amount         int       `json:"amount"`
 }
 
 // Query returns a list of bets with paging.
@@ -49,7 +49,7 @@ func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Req
 			Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
 			Description:    "In 2022 there will be 2000 electric cars accidents",
 			Terms:          "Has to be in the us.",
-			ExpirationDate: "Fri Sep 16 2022",
+			ExpirationDate: time.Now(),
 			Amount:         30,
 		},
 		{
@@ -59,7 +59,7 @@ func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Req
 			Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
 			Description:    "In 2022 there will be 2000 electric cars accidents",
 			Terms:          "Has to be in the us.",
-			ExpirationDate: "Fri Sep 16 2022",
+			ExpirationDate: time.Now(),
 			Amount:         30,
 		},
 		{
@@ -69,7 +69,7 @@ func (h *Handlers) Query(ctx context.Context, w http.ResponseWriter, r *http.Req
 			Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
 			Description:    "In 2022 there will be 2000 electric cars accidents",
 			Terms:          "Has to be in the us.",
-			ExpirationDate: "Fri Sep 16 2022",
+			ExpirationDate: time.Now(),
 			Amount:         30,
 		},
 	}
@@ -92,7 +92,7 @@ func (h *Handlers) QueryByID(ctx context.Context, w http.ResponseWriter, r *http
 		Moderator:      "0x39249126d90671284cd06495d19C04DD0e54d371",
 		Description:    "In 2022 there will be 2000 electric cars accidents",
 		Terms:          "Has to be in the us.",
-		ExpirationDate: "Fri Sep 16 2022",
+		ExpirationDate: time.Now(),
 		Amount:         30,
 	}
 	return web.Respond(ctx, w, bet, http.StatusOK)

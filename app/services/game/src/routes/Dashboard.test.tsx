@@ -8,7 +8,7 @@ import { Bet } from '../types/index.d'
 
 const bets: Bet[] = [
   {
-    id: 1,
+    id: '1',
     status: 'open',
     players: [
       { address: '0x3c11fDf93a2Ec67E455C67DaaAdA0550C4bDA4FC', signed: false },
@@ -17,7 +17,7 @@ const bets: Bet[] = [
     moderator: '0x39249126d90671284cd06495d19C04DD0e54d371',
     description: 'In 2022 there will be 2000 electric cars accidents',
     terms: 'Has to be in the us.',
-    expirationDate: 'Fri Sep 16 2022',
+    expirationDate: new Date().getTime(),
     amount: 30,
   },
 ]

@@ -1,5 +1,5 @@
 // getTimeLeft returns how many days, months and years are left
-function getTimeLeft(expirationDate: string) {
+function getTimeLeft(expirationDate: number) {
   const date = new Date(expirationDate)
   const yearsLeft = date.getFullYear() - new Date().getFullYear()
   const daysLeft = date.getDate() - new Date().getDate()

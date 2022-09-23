@@ -11,6 +11,9 @@ function YourBets() {
   // Extracts user address from ethersConnection hook.
   const { account } = useEthersConnection()
 
+  // Creates a loading state to update the component
+  const [loading, setLoading] = useState(true)
+
   const token = window.sessionStorage.getItem('token')
 
   // We create an state to display the fetched bets
@@ -21,6 +24,9 @@ function YourBets() {
   // Initial function executed by initial effect.
   const initEFn = () => {
     const axiosFn = (response: AxiosResponse) => {
+      if (account && token) {
+        setLoading(false)
+      }
       setBets(response.data)
     }
     const axiosCatchFn = (error: AxiosError) => {
@@ -46,7 +52,7 @@ function YourBets() {
       padding: '32px 62px',
     },
   }
-  return account && token ? (
+  return loading ? (
     <>
       <Subtitle showSearch text="Your bets" />
       <section style={styles.yourBets}>

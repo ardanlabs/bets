@@ -28,7 +28,7 @@ export interface BetsFilter {
   status: string
   player: string
   challenger: string
-  expirationDate: string
+  expirationDate: number
 }
 
 export interface Player {
@@ -37,20 +37,20 @@ export interface Player {
 }
 
 export interface Bet {
-  id: number
+  id: string
   status: string
   players: Player[]
   moderator: string
   description: string
   terms: string
-  expirationDate: string
+  expirationDate: number
   amount: number
 }
 
 export interface DefaultDoc {
   address: string
   dateTime: string
-  betId: number
+  betId: string
 }
 
 export interface SetModeratorDoc extends DefaultDoc {

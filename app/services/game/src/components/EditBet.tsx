@@ -15,16 +15,19 @@ function EditBet(props: EditBetProps) {
   const [localBet, setLocalBet] = useState<Bet | Object>(
     bet
       ? bet
-      : {
-          id: null,
-          status: null,
-          players: [],
-          moderator: null,
-          description: null,
-          terms: null,
-          expirationDate: null,
-          amount: null,
-        },
+      : ({
+          id: '',
+          status: '',
+          players: [
+            { address: '', signed: false },
+            { address: '', signed: false },
+          ],
+          moderator: '',
+          description: '',
+          terms: '',
+          expirationDate: new Date().getTime(),
+          amount: 0,
+        } as Bet),
   )
 
   // We set localstate to manage success modal
@@ -46,12 +49,24 @@ function EditBet(props: EditBetProps) {
     }
 
     axios
-      .post(`http://${apiUrl}/bruno/bet/${bet ? bet.id : ''}`)
+      .post(`http://${apiUrl}/${bet ? `editBet/${bet.id}` : 'bet'}`)
       .then(submitBetAxiosFn)
       .catch(submitBetAxiosCatchFn)
 
     // Add bet submit
     hideModalMethod(false)
+  }
+
+  // getExpirationDate returns a date in YYYY-MM-DD format
+  function getExpirationDate() {
+    const date = new Date((localBet as Bet).expirationDate)
+    const YYYY = date.getFullYear()
+    let MM = (date.getMonth() + 1).toString()
+    MM = MM.length <= 1 ? `0${MM}` : MM
+    let DD = date.getDate().toString()
+    DD = DD.length <= 1 ? `0${DD}` : DD
+
+    return `${YYYY}-${MM}-${DD}`
   }
 
   // handlePlayersChange keeps track of the input value change in the local state.
@@ -63,6 +78,11 @@ function EditBet(props: EditBetProps) {
 
     setLocalBet((prevState: Bet) => {
       let prevPlayers = prevState.players
+        ? prevState.players
+        : [
+            { address: '', signed: false },
+            { address: '', signed: false },
+          ]
       let newPlayer = prevPlayers[playerIndex]
 
       newPlayer.address = inputValue
@@ -141,7 +161,7 @@ function EditBet(props: EditBetProps) {
   }
   return (
     <>
-      <SuccessModal show={show} setShow={setShow} betId={1}></SuccessModal>
+      <SuccessModal show={show} setShow={setShow} betId={'1'}></SuccessModal>
       <form style={styles.form}>
         <div style={styles.row}>
           {(localBet as Bet).players.map((player, index) => (
@@ -237,15 +257,10 @@ function EditBet(props: EditBetProps) {
             </label>
             <input
               onChange={handleFormChange}
-              value={
-                Object.keys(localBet).length
-                  ? (localBet as Bet).expirationDate
-                  : ''
-              }
+              value={Object.keys(localBet).length ? getExpirationDate() : ''}
               style={{ ...styles.formPlaceHolder, ...styles.formInput }}
               type="date"
               className="formInputs form-control"
-              placeholder="Expiration date"
               id="expirationDate"
             />
           </div>
