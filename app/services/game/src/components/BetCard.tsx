@@ -14,6 +14,7 @@ import Modal from './modal/Modal'
 import BetStatus from './BetStatus'
 import useApp from './hooks/useApp'
 import getNowDate from '../utils/getNowDate'
+import getExpirationDate from '../utils/getExpirationDate'
 
 function BetCard(props: BetCardProps) {
   // Extracts props
@@ -254,7 +255,9 @@ function BetCard(props: BetCardProps) {
       {bet.expirationDate && isDetail ? (
         <div style={styles.row}>
           <div style={{ ...styles.text, ...styles.title }}>Expiration Date</div>
-          <div style={{ ...styles.text }}>{bet.expirationDate}</div>
+          <div style={{ ...styles.text }}>
+            {getExpirationDate(bet.expirationDate)}
+          </div>
         </div>
       ) : null}
       {bet.terms && isDetail ? (

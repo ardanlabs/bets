@@ -6,6 +6,7 @@ import { EditBetProps } from '../types/props.d'
 import { apiUrl } from '../utils/axiosConfig'
 import Button from './Button'
 import SuccessModal from '../components/SuccessModal'
+import getExpirationDate from '../utils/getExpirationDate'
 
 function EditBet(props: EditBetProps) {
   // Extracts props
@@ -55,18 +56,6 @@ function EditBet(props: EditBetProps) {
 
     // Add bet submit
     hideModalMethod(false)
-  }
-
-  // getExpirationDate returns a date in YYYY-MM-DD format
-  function getExpirationDate() {
-    const date = new Date((localBet as Bet).expirationDate)
-    const YYYY = date.getFullYear()
-    let MM = (date.getMonth() + 1).toString()
-    MM = MM.length <= 1 ? `0${MM}` : MM
-    let DD = date.getDate().toString()
-    DD = DD.length <= 1 ? `0${DD}` : DD
-
-    return `${YYYY}-${MM}-${DD}`
   }
 
   // handlePlayersChange keeps track of the input value change in the local state.
@@ -257,7 +246,11 @@ function EditBet(props: EditBetProps) {
             </label>
             <input
               onChange={handleFormChange}
-              value={Object.keys(localBet).length ? getExpirationDate() : ''}
+              value={
+                Object.keys(localBet).length
+                  ? getExpirationDate((localBet as Bet).expirationDate)
+                  : ''
+              }
               style={{ ...styles.formPlaceHolder, ...styles.formInput }}
               type="date"
               className="formInputs form-control"
