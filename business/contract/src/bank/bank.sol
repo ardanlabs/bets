@@ -88,7 +88,7 @@ contract Bank {
     ) onlyOwner public {
 
         // Hash the reconciliation information.
-        bytes32 hash = hashReconcile(betId, winners, nonce);
+        bytes32 hash = hashReconcile(betId, winners, moderator, nonce);
 
         // Retrieve the moderator from the signed hash and signature.
         address validateModerator = ecrecover(hash, v, r, s);
@@ -154,8 +154,8 @@ contract Bank {
 
     // hashReconcile is an internal function to create a hash for the reconciliation
     // of a given bet.
-    function hashReconcile(string memory betId, address[] memory winners, uint nonce) internal pure returns (bytes32) {
-        return ethSignedHash(keccak256(abi.encodePacked(betId, winners, nonce)));
+    function hashReconcile(string memory betId, address[] memory winners, address moderator, uint nonce) internal pure returns (bytes32) {
+        return ethSignedHash(keccak256(abi.encodePacked(betId, winners, moderator, nonce)));
     }
 
     // ethSignedHash is an internal function which signs a hash with the
