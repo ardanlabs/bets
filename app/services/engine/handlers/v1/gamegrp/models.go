@@ -19,8 +19,8 @@ type NewBet struct {
 // NewPlayer represents the connection between a new Bet and an Account that is in
 // a player role.
 type NewPlayer struct {
-	Address string `db:"address"`
-	InFavor bool   `db:"inFavor"`
+	Address string `json:"address"`
+	InFavor bool   `json:"inFavor"`
 }
 
 // UpdateBet is what we require from clients when updating a Bet.
