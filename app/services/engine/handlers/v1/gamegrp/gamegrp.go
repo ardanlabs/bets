@@ -210,24 +210,24 @@ func (h *Handlers) CreateBet(ctx context.Context, w http.ResponseWriter, r *http
 		return web.NewShutdownError("web value missing from context")
 	}
 
-	var newBetPayload NewBet
-	if err := web.Decode(r, &newBetPayload); err != nil {
+	var newBetPL NewBet
+	if err := web.Decode(r, &newBetPL); err != nil {
 		return fmt.Errorf("unable to decode payload: %w", err)
 	}
 
-	newBet := bet.NewBet{
-		Description:      newBetPayload.Description,
-		Terms:            newBetPayload.Terms,
-		Amount:           newBetPayload.Amount,
-		ModeratorAddress: newBetPayload.ModeratorAddress,
-		DateExpired:      time.Unix(int64(newBetPayload.DateExpired), 0),
+	var players []bet.NewPlayer
+	for _, player := range newBetPL.Players {
+		players = append(players, bet.NewPlayer(player))
 	}
 
-	var newPlayers []bet.NewPlayer
-	for _, player := range newBetPayload.Players {
-		newPlayers = append(newPlayers, bet.NewPlayer(player))
+	newBet := bet.NewBet{
+		Description:      newBetPL.Description,
+		Terms:            newBetPL.Terms,
+		Amount:           newBetPL.Amount,
+		ModeratorAddress: newBetPL.ModeratorAddress,
+		Players:          players,
+		DateExpired:      time.Unix(int64(newBetPL.DateExpired), 0),
 	}
-	newBet.Players = newPlayers
 
 	bet, err := h.Bet.CreateBet(ctx, newBet, v.Now)
 	if err != nil {
@@ -244,32 +244,32 @@ func (h *Handlers) UpdateBet(ctx context.Context, w http.ResponseWriter, r *http
 		return web.NewShutdownError("web value missing from context")
 	}
 
-	var upBetPayload UpdateBet
-	if err := web.Decode(r, &upBetPayload); err != nil {
+	var updBetPL UpdateBet
+	if err := web.Decode(r, &updBetPL); err != nil {
 		return fmt.Errorf("unable to decode payload: %w", err)
 	}
 
 	id := web.Param(r, "id")
 
-	upBet := bet.UpdateBet{
-		Description:      upBetPayload.Description,
-		Terms:            upBetPayload.Terms,
-		Amount:           upBetPayload.Amount,
-		ModeratorAddress: upBetPayload.ModeratorAddress,
+	updBet := bet.UpdateBet{
+		Description:      updBetPL.Description,
+		Terms:            updBetPL.Terms,
+		Amount:           updBetPL.Amount,
+		ModeratorAddress: updBetPL.ModeratorAddress,
 	}
 
-	if upBetPayload.DateExpired != nil {
-		upBet.DateExpired = time.Unix(int64(*upBetPayload.DateExpired), 0)
+	if updBetPL.DateExpired != nil {
+		updBet.DateExpired = time.Unix(int64(*updBetPL.DateExpired), 0)
 	}
 
-	if err := h.Bet.UpdateBet(ctx, id, upBet, v.Now); err != nil {
+	if err := h.Bet.UpdateBet(ctx, id, updBet, v.Now); err != nil {
 		switch {
 		case errors.Is(err, bet.ErrInvalidID):
 			return v1Web.NewRequestError(err, http.StatusBadRequest)
 		case errors.Is(err, bet.ErrNotFound):
 			return v1Web.NewRequestError(err, http.StatusNotFound)
 		default:
-			return fmt.Errorf("ID[%s] Bet[%+v]: %w", id, &upBet, err)
+			return fmt.Errorf("ID[%s] Bet[%+v]: %w", id, updBet, err)
 		}
 	}
 
@@ -283,6 +283,7 @@ func (h *Handlers) QueryBet(ctx context.Context, w http.ResponseWriter, r *http.
 	if err != nil {
 		return v1Web.NewRequestError(fmt.Errorf("invalid page format, page[%s]", page), http.StatusBadRequest)
 	}
+
 	rows := web.Param(r, "rows")
 	rowsPerPage, err := strconv.Atoi(rows)
 	if err != nil {
@@ -300,6 +301,7 @@ func (h *Handlers) QueryBet(ctx context.Context, w http.ResponseWriter, r *http.
 // QueryBetByID returns a bet by its ID.
 func (h *Handlers) QueryBetByID(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	id := web.Param(r, "id")
+
 	bt, err := h.Bet.QueryBetByID(ctx, id)
 	if err != nil {
 		switch {
