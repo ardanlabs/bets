@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ardanlabs/bets/business/contract/go/bank"
 	"github.com/ardanlabs/bets/foundation/web"
@@ -60,22 +61,20 @@ func (b *Bank) Client() *ethereum.Ethereum {
 
 // AccountBalance will return the balance for the specified account. Only the
 // owner of the smart contract can make this call.
-func (b *Bank) AccountBalance(ctx context.Context, accountID string) (BalanceGWei *big.Float, BetGWei *big.Float, err error) {
+func (b *Bank) AccountBalance(ctx context.Context, accountID string) (BalanceGWei *big.Float, err error) {
 	tranOpts, err := b.ethereum.NewCallOpts(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("new call opts: %w", err)
+		return nil, fmt.Errorf("new call opts: %w", err)
 	}
 
-	amounts, err := b.contract.AccountBalance(tranOpts, common.HexToAddress(accountID))
+	balance, err := b.contract.AccountBalance(tranOpts, common.HexToAddress(accountID))
 	if err != nil {
-		return nil, nil, fmt.Errorf("account balance: %w", err)
+		return nil, fmt.Errorf("account balance: %w", err)
 	}
-	balance := amounts[0]
-	bet := amounts[1]
 
-	b.log(ctx, "account balance", "accountid", accountID, "balance", balance, "bet", bet)
+	b.log(ctx, "account balance", "accountid", accountID, "balance", balance)
 
-	return currency.Wei2GWei(balance), currency.Wei2GWei(bet), nil
+	return currency.Wei2GWei(balance), nil
 }
 
 // Balance will return the balance for the connected account.
@@ -95,24 +94,53 @@ func (b *Bank) Balance(ctx context.Context) (GWei *big.Float, err error) {
 	return currency.Wei2GWei(wei), nil
 }
 
-// PlaceBet moves money from the account's balance into their amountBet, plus
-// provide the house the bet fee.
-func (b *Bank) PlaceBet(ctx context.Context, personAccountID string, amount *big.Float, fee *big.Float) (*types.Transaction, *types.Receipt, error) {
+// PlaceBets moves money from the bettors' account balance into the amountLocked.
+func (b *Bank) PlaceBets(
+	ctx context.Context,
+	betID string,
+	bettors []string,
+	moderator string,
+	amount *big.Float,
+	expiration time.Time,
+	nonce []*big.Int,
+	signatures [][]byte,
+) (*types.Transaction, *types.Receipt, error) {
 	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
 	}
 
-	personID := common.HexToAddress(personAccountID)
-	betAmount := currency.GWei2Wei(amount)
-	betFee := currency.GWei2Wei(fee)
+	var bettorAddresses []common.Address
+	for _, bettor := range bettors {
+		bettorAddresses = append(bettorAddresses, common.HexToAddress(bettor))
+	}
 
-	tx, err := b.contract.PlaceBet(tranOpts, personID, betAmount, betFee)
+	moderatorAddress := common.HexToAddress(moderator)
+
+	betAmount := currency.GWei2Wei(amount)
+
+	expires := new(big.Int).SetInt64(expiration.Unix())
+
+	// TODO: extract v, r, s from signatures
+	v := []uint8{0}
+	r := [][32]byte{}
+	s := [][32]byte{}
+
+	tx, err := b.contract.PlaceBetsSigned(
+		tranOpts,
+		betID,
+		bettorAddresses,
+		moderatorAddress,
+		betAmount,
+		expires,
+		nonce,
+		v, r, s,
+	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("place bet: %w", err)
 	}
 
-	b.log(ctx, "place bet started", "account", personID, "amount", betAmount, "fee", betFee)
+	b.log(ctx, "place bet started", "accounts", bettors, "amount", betAmount)
 
 	receipt, err := b.ethereum.WaitMined(ctx, tx)
 	if err != nil {
@@ -126,23 +154,44 @@ func (b *Bank) PlaceBet(ctx context.Context, personAccountID string, amount *big
 
 // Reconcile will apply with ante to the winner and loser accounts, plus provide
 // the house the game fee.
-func (b *Bank) Reconcile(ctx context.Context, winningAccountID string, losingAccountID string, anteGWei *big.Float, gameFeeGWei *big.Float) (*types.Transaction, *types.Receipt, error) {
+func (b *Bank) Reconcile(
+	ctx context.Context,
+	betID string,
+	winners []string,
+	moderator string,
+	nonce *big.Int,
+	signature []byte,
+) (*types.Transaction, *types.Receipt, error) {
 	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
 	}
 
-	winnerID := common.HexToAddress(winningAccountID)
-	loserID := common.HexToAddress(losingAccountID)
-	anteWei := currency.GWei2Wei(anteGWei)
-	gameFeeWei := currency.GWei2Wei(gameFeeGWei)
+	var winnerAddresses []common.Address
+	for _, winner := range winners {
+		winnerAddresses = append(winnerAddresses, common.HexToAddress(winner))
+	}
 
-	tx, err := b.contract.Reconcile(tranOpts, winnerID, loserID, anteWei, gameFeeWei)
+	moderatorAddress := common.HexToAddress(moderator)
+
+	// TODO: extract v, r, s from signature
+	v := uint8(0)
+	r := [32]byte{}
+	s := [32]byte{}
+
+	tx, err := b.contract.ReconcileSigned(
+		tranOpts,
+		betID,
+		winnerAddresses,
+		moderatorAddress,
+		nonce,
+		v, r, s,
+	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("reconcile: %w", err)
 	}
 
-	b.log(ctx, "reconcile started", "anteWei", anteWei, "gameFeeWei", gameFeeWei)
+	b.log(ctx, "reconcile started", "bet", betID, "winners", winners)
 
 	receipt, err := b.ethereum.WaitMined(ctx, tx)
 	if err != nil {
