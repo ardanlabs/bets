@@ -59,7 +59,7 @@ type UpdateBet struct {
 // Account represents an individual account
 type Account struct {
 	Address string `json:"address"`
-	Nonce   int    `db:"nonce"`
+	Nonce   int    `json:"nonce"`
 }
 
 // NewAccount contains information needed to create a new Account.
