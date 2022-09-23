@@ -45,6 +45,7 @@ contract Bank {
     // PlaceBetsSigned will place bets for all participants.
     function PlaceBetsSigned(
         string    memory betId,
+        address[] memory bettors,
         address   moderator,
         uint256   amount,
         uint256   expiration,
@@ -55,13 +56,19 @@ contract Bank {
     ) onlyOwner public {
 
         // Loop through bettor information and signatures.
-        for (uint bettor = 0; bettor < nonce.length; bettor++) {
+        for (uint bettor = 0; bettor < bettors.length; bettor++) {
+
             // Hash the bet information.
-            bytes32 hash = hashPlaceBet(betId, moderator, amount, expiration, nonce[bettor]);
+            bytes32 hash = hashPlaceBet(betId, bettors[bettor], moderator, amount, expiration, nonce[bettor]);
 
             // Retrieve the bettor's public address from the signed hash and the
             // bettor's signature.
             address bettorAddress = ecrecover(hash, v[bettor], r[bettor], s[bettor]);
+
+            // Ensure the address retrieved from the signature matches the bettor.
+            if (bettorAddress != bettors[bettor]) {
+                revert("invalid bettor");
+            }
 
             // Ensure the bettor has sufficient balance for the bet.
             if (accountBalances[bettorAddress] < amount) {
@@ -148,8 +155,8 @@ contract Bank {
 
     // hashPlaceBet is an internal function to create a hash for the given bet
     // placement information.
-    function hashPlaceBet(string memory betId, address moderator, uint256 amount, uint256 expiration, uint nonce) internal pure returns (bytes32) {
-        return ethSignedHash(keccak256(abi.encodePacked(betId, moderator, amount, expiration, nonce)));
+    function hashPlaceBet(string memory betId, address bettor, address moderator, uint256 amount, uint256 expiration, uint nonce) internal pure returns (bytes32) {
+        return ethSignedHash(keccak256(abi.encodePacked(betId, bettor, moderator, amount, expiration, nonce)));
     }
 
     // hashReconcile is an internal function to create a hash for the reconciliation
