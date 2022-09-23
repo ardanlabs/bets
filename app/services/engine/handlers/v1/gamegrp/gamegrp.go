@@ -12,21 +12,22 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ardanlabs/bets/business/core/bank"
+	"github.com/ardanlabs/bets/business/core/bet"
 	"github.com/ardanlabs/bets/business/web/auth"
 	v1Web "github.com/ardanlabs/bets/business/web/v1"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/gorilla/websocket"
-	"go.uber.org/zap"
-
-	"github.com/ardanlabs/bets/business/core/bank"
 	"github.com/ardanlabs/bets/foundation/events"
 	"github.com/ardanlabs/bets/foundation/web"
 	"github.com/ardanlabs/ethereum"
 	"github.com/ardanlabs/ethereum/currency"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 )
 
 // Handlers manages the set of user endpoints.
 type Handlers struct {
+	Bet            bet.Core
 	Converter      *currency.Converter
 	Bank           *bank.Bank
 	Log            *zap.SugaredLogger
@@ -197,6 +198,68 @@ func (h *Handlers) Test(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	return web.Respond(ctx, w, resp, http.StatusOK)
+}
+
+// =========================================================================
+// Bet Support
+
+// CreateBet creates a new bet and returns its content.
+func (h *Handlers) CreateBet(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	v, err := web.GetValues(ctx)
+	if err != nil {
+		return web.NewShutdownError("web value missing from context")
+	}
+
+	var nb bet.NewBet
+	if err := web.Decode(r, &nb); err != nil {
+		return fmt.Errorf("unable to decode payload: %w", err)
+	}
+
+	bet, err := h.Bet.CreateBet(ctx, nb, v.Now)
+	if err != nil {
+		return fmt.Errorf("creating new bet, newBet[%+v]: %w", nb, err)
+	}
+
+	return web.Respond(ctx, w, bet, http.StatusCreated)
+}
+
+// QueryBet returns a list of bets with paging.
+func (h *Handlers) QueryBet(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	page := web.Param(r, "page")
+	pageNumber, err := strconv.Atoi(page)
+	if err != nil {
+		return v1Web.NewRequestError(fmt.Errorf("invalid page format, page[%s]", page), http.StatusBadRequest)
+	}
+	rows := web.Param(r, "rows")
+	rowsPerPage, err := strconv.Atoi(rows)
+	if err != nil {
+		return v1Web.NewRequestError(fmt.Errorf("invalid rows format, rows[%s]", rows), http.StatusBadRequest)
+	}
+
+	bets, err := h.Bet.QueryBet(ctx, pageNumber, rowsPerPage)
+	if err != nil {
+		return fmt.Errorf("unable to query for bets: %w", err)
+	}
+
+	return web.Respond(ctx, w, bets, http.StatusOK)
+}
+
+// QueryBetByID returns a bet by its ID.
+func (h *Handlers) QueryBetByID(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	id := web.Param(r, "id")
+	bt, err := h.Bet.QueryBetByID(ctx, id)
+	if err != nil {
+		switch {
+		case errors.Is(err, bet.ErrInvalidID):
+			return v1Web.NewRequestError(err, http.StatusBadRequest)
+		case errors.Is(err, bet.ErrNotFound):
+			return v1Web.NewRequestError(err, http.StatusNotFound)
+		default:
+			return fmt.Errorf("ID[%s]: %w", id, err)
+		}
+	}
+
+	return web.Respond(ctx, w, bt, http.StatusOK)
 }
 
 // =============================================================================

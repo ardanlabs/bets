@@ -3,10 +3,11 @@
 package v1
 
 import (
-	"github.com/ardanlabs/bets/business/core/bet"
-	"github.com/jmoiron/sqlx"
 	"net/http"
 	"time"
+
+	"github.com/ardanlabs/bets/business/core/bet"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/ardanlabs/bets/app/services/engine/handlers/v1/brunogrp"
 	"github.com/ardanlabs/bets/app/services/engine/handlers/v1/gamegrp"
@@ -41,6 +42,7 @@ func Routes(app *web.App, cfg Config) {
 	ggh := gamegrp.Handlers{
 		Converter:      cfg.Converter,
 		Bank:           cfg.Bank,
+		Bet:            bet.NewCore(cfg.Log, cfg.DB),
 		Log:            cfg.Log,
 		Evts:           cfg.Evts,
 		WS:             websocket.Upgrader{},
@@ -54,6 +56,9 @@ func Routes(app *web.App, cfg Config) {
 	app.Handle(http.MethodGet, version, "/game/config", ggh.Configuration)
 	app.Handle(http.MethodGet, version, "/game/usd2wei/:usd", ggh.USD2Wei)
 	app.Handle(http.MethodGet, version, "/game/test", ggh.Test, mid.Authenticate(cfg.Log, cfg.Auth))
+	app.Handle(http.MethodGet, version, "/game/bets/:page/:rows", ggh.QueryBet)
+	app.Handle(http.MethodGet, version, "/game/bet/:id", ggh.QueryBetByID)
+	app.Handle(http.MethodPost, version, "/game/bet/:id", ggh.CreateBet)
 
 	bgh := brunogrp.Handlers{
 		Bet: bet.NewCore(cfg.Log, cfg.DB),

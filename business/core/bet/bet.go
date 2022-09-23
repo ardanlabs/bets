@@ -21,6 +21,7 @@ var (
 	ErrNotFound       = errors.New("account not found")
 	ErrInvalidAddress = errors.New("address is not in its proper form")
 	ErrInvalidNonce   = errors.New("nonce must be 1 greater than previous nonce")
+	ErrInvalidID      = errors.New("ID is not in its proper form")
 )
 
 // Core manages the set of APIs for product access.
@@ -180,6 +181,84 @@ func (c Core) CreateBet(ctx context.Context, nb NewBet, now time.Time) (Bet, err
 		})
 	}
 
+	bet.Players = players
+
+	return bet, nil
+}
+
+// QueryBet gets all Bets from the database.
+func (c Core) QueryBet(ctx context.Context, pageNumber int, rowsPerPage int) ([]Bet, error) {
+	dbBets, err := c.store.QueryBet(ctx, pageNumber, rowsPerPage)
+	if err != nil {
+		return nil, fmt.Errorf("query bet: %w", err)
+	}
+
+	var bets []Bet
+	for _, dbBet := range dbBets {
+		bet := Bet{
+			ID:               dbBet.ID,
+			Status:           dbBet.Status,
+			Description:      dbBet.Description,
+			Terms:            dbBet.Terms,
+			Amount:           dbBet.Amount,
+			ModeratorAddress: dbBet.ModeratorAddress,
+			DateExpired:      dbBet.DateExpired,
+			DateCreated:      dbBet.DateCreated,
+			DateUpdated:      dbBet.DateUpdated,
+		}
+
+		dbPlayers, err := c.store.QueryBetPlayers(ctx, dbBet.ID, 1, 10)
+		if err != nil {
+			return nil, fmt.Errorf("query bet players: %w", err)
+		}
+
+		var players []Player
+		for _, dbPlayer := range dbPlayers {
+			players = append(players, Player(dbPlayer))
+		}
+		bet.Players = players
+
+		bets = append(bets, bet)
+	}
+
+	return bets, nil
+}
+
+// QueryBetByID finds the bet identified by a given ID.
+func (c Core) QueryBetByID(ctx context.Context, betID string) (Bet, error) {
+	if err := validate.CheckID(betID); err != nil {
+		return Bet{}, ErrInvalidID
+	}
+
+	dbBet, err := c.store.QueryBetByID(ctx, betID)
+	if err != nil {
+		if errors.Is(err, database.ErrDBNotFound) {
+			return Bet{}, ErrNotFound
+		}
+		return Bet{}, fmt.Errorf("query: %w", err)
+	}
+
+	bet := Bet{
+		ID:               dbBet.ID,
+		Status:           dbBet.Status,
+		Description:      dbBet.Description,
+		Terms:            dbBet.Terms,
+		Amount:           dbBet.Amount,
+		ModeratorAddress: dbBet.ModeratorAddress,
+		DateExpired:      dbBet.DateExpired,
+		DateCreated:      dbBet.DateCreated,
+		DateUpdated:      dbBet.DateUpdated,
+	}
+
+	dbPlayers, err := c.store.QueryBetPlayers(ctx, dbBet.ID, 1, 10)
+	if err != nil {
+		return Bet{}, fmt.Errorf("query bet players: %w", err)
+	}
+
+	var players []Player
+	for _, dbPlayer := range dbPlayers {
+		players = append(players, Player(dbPlayer))
+	}
 	bet.Players = players
 
 	return bet, nil

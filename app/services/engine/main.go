@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ardanlabs/bets/business/sys/database"
+
 	"github.com/ardanlabs/bets/app/services/engine/handlers"
 	"github.com/ardanlabs/bets/business/core/bank"
 	"github.com/ardanlabs/bets/business/web/auth"
@@ -77,6 +79,15 @@ func run(log *zap.SugaredLogger) error {
 			KeysFolder string `conf:"default:zarf/keys/"`
 			ActiveKID  string `conf:"default:54bb2165-71e1-41a6-af3e-7da4a0e1e2c1"`
 		}
+		DB struct {
+			User         string `conf:"default:postgres"`
+			Password     string `conf:"default:postgres,mask"`
+			Host         string `conf:"default:localhost"`
+			Name         string `conf:"default:postgres"`
+			MaxIdleConns int    `conf:"default:0"`
+			MaxOpenConns int    `conf:"default:0"`
+			DisableTLS   bool   `conf:"default:true"`
+		}
 		Game struct {
 			ContractID     string        `conf:"default:0x0"`
 			ConnectTimeout time.Duration `conf:"default:10s"`
@@ -135,6 +146,29 @@ func run(log *zap.SugaredLogger) error {
 	if err != nil {
 		return fmt.Errorf("constructing auth: %w", err)
 	}
+
+	// =========================================================================
+	// Database Support
+
+	// Create connectivity to the database.
+	log.Infow("startup", "status", "initializing database support", "host", cfg.DB.Host)
+
+	db, err := database.Open(database.Config{
+		User:         cfg.DB.User,
+		Password:     cfg.DB.Password,
+		Host:         cfg.DB.Host,
+		Name:         cfg.DB.Name,
+		MaxIdleConns: cfg.DB.MaxIdleConns,
+		MaxOpenConns: cfg.DB.MaxOpenConns,
+		DisableTLS:   cfg.DB.DisableTLS,
+	})
+	if err != nil {
+		return fmt.Errorf("connecting to db: %w", err)
+	}
+	defer func() {
+		log.Infow("shutdown", "status", "stopping database support", "host", cfg.DB.Host)
+		db.Close()
+	}()
 
 	// =========================================================================
 	// Create the currency converter and bank needed for the game
