@@ -11,7 +11,19 @@ contract Bank {
     // accountBalances represents the amount of money an account has available.
     mapping (address => uint256) private accountBalances;
 
-    // amountBet represents the amount of money that has been bet.
+    // betPool represents the amount of money stored in the pool for a given bet.
+    mapping (string => uint256) private betPool;
+
+    // betExpires represents the expiration date of a given bet.
+    mapping (string => uint256) private betExpires;
+
+    // betModerator represents the moderator for a given bet.
+    mapping (string => address) private betModerator;
+
+    // accountNonce represents the current nonce for a bettor or moderator.
+    mapping (address => uint) private accountNonce;
+
+    // amountBet represents the amount the account has bet thus far (deprecated)
     mapping (address => uint256) private amountBet;
 
     // EventLog provides support for external logging.
@@ -40,6 +52,97 @@ contract Bank {
         address payable account = payable(target);
         account.transfer(balance);
         emit EventLog(string.concat("transfer[", Error.Itoa(balance), "]"));
+    }
+
+    // PlaceBetsSigned will place bets for all participants.
+    function PlaceBetsSigned(
+        string    memory betId,
+        address   moderator,
+        uint256   amount,
+        uint256   expiration,
+        uint[]    memory nonce,
+        uint8[]   memory v,
+        bytes32[] memory r,
+        bytes32[] memory s
+    ) onlyOwner public {
+        // Initialize bet information.
+        betExpires[betId] = expiration;
+        betModerator[betId] = moderator;
+
+        // Loop through bettor information and signatures.
+        for (uint bettor = 0; bettor < nonce.length; bettor++) {
+            // Hash the bet information.
+            bytes32 hash = hashPlaceBet(betId, moderator, amount, expiration, nonce[bettor]);
+
+            // Retrieve the bettor's public address from the signed hash and the
+            // bettor's signature.
+            address bettorAddress = ecrecover(hash, v[bettor], r[bettor], s[bettor]);
+
+            // Ensure the bettor has sufficient balance for the bet.
+            if (accountBalances[bettorAddress] < amount) {
+                revert("insufficient funds");
+            }
+
+            // Ensure the bettor's nonce is valid.
+            if (nonce[bettor] != accountNonce[bettorAddress] + 1) {
+                revert("invalid bettor nonce");
+            }
+
+            // Move the funds from the bettor's balance into the betting pool.
+            betPool[betId] += amount;
+            accountBalances[bettorAddress] -= amount;
+
+            // Increment account nonce for later bets.
+            accountNonce[bettorAddress]++;
+
+            emit EventLog(string.concat("betId[", betId, "] bettor[", Error.Addrtoa(bettorAddress), "] bet[", Error.Itoa(amount), "]"));
+        }
+    }
+
+    // ReconcileSigned allows a moderator to reconcile a bet.
+    function ReconcileSigned(
+        string memory betId,
+        address[] memory winners,
+        uint nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) onlyOwner public {
+        // Bet can only be reconciled within 24 hours after expiration.
+        if (betExpires[betId] < block.timestamp || block.timestamp > betExpires[betId] + 24 hours) {
+            revert("bet cannot be reconciled at this time");
+        }
+
+        // Hash the reconciliation information.
+        bytes32 hash = hashReconcile(betId, winners, nonce);
+
+        // Retrieve the moderator from the signed hash and signature.
+        address moderator = ecrecover(hash, v, r, s);
+
+        // Ensure the address matches the bet's moderator on file.
+        if (moderator != betModerator[betId]) {
+            revert("not authorized to reconcile this bet");
+        }
+
+        // Ensure the moderator's nonce is valid.
+        if (nonce != accountNonce[moderator] + 1) {
+            revert("invalid moderator nonce");
+        }
+
+        // Set winnings amount per winner.
+        uint256 winnings = betPool[betId] / winners.length;
+
+        // Reconcile winnings.
+        for (uint winner = 0; winner < winners.length; winner++) {
+            accountBalances[winners[winner]] += winnings;
+            emit EventLog(string.concat("betId[", betId, "] bettor[", Error.Addrtoa(winners[winner]), "] winnings[", Error.Itoa(winnings), "]"));
+        }
+
+        // Empty bet pool.
+        betPool[betId] = 0;
+
+        // Increment moderator nonce.
+        accountNonce[moderator]++;
     }
 
     // PlaceBet moves money from accountBalances to amountBet.
@@ -144,5 +247,25 @@ contract Bank {
         accountBalances[msg.sender] -= bal;
 
         emit EventLog(string.concat("withdraw[", Error.Addrtoa(msg.sender), "] amount[", Error.Itoa(bal), "]"));
+    }
+
+    // =========================================================================
+
+    // hashPlaceBet is an internal function to create a hash for the given bet
+    // placement information.
+    function hashPlaceBet(string memory betId, address moderator, uint256 amount, uint256 expiration, uint nonce) internal pure returns (bytes32) {
+        return ethSignedHash(keccak256(abi.encodePacked(betId, moderator, amount, expiration, nonce)));
+    }
+
+    // hashReconcile is an internal function to create a hash for the reconciliation
+    // of a given bet.
+    function hashReconcile(string memory betId, address[] memory winners, uint nonce) internal pure returns (bytes32) {
+        return ethSignedHash(keccak256(abi.encodePacked(betId, winners, nonce)));
+    }
+
+    // ethSignedHash is an internal function which signs a hash with the
+    // Ethereum prefix.
+    function ethSignedHash(bytes32 hash) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
     }
 }
