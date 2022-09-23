@@ -8,23 +8,41 @@ function BetStatus(props: BetStatusProps) {
 
   const styles: StyleObject = {
     status: {
-      background: 'var(--status-open-box)',
       borderRadius: '8px',
       fontFamily: 'Roboto Condensed',
       fontStyle: 'normal',
       fontWeight: '600',
       fontSize: '16px',
       lineHeight: '11px',
-      color: 'var(--status-open-text)',
       padding: '12px',
       aspectRatio: '3/1',
+      color: 'var(--bet-status-text)',
+      background: 'var(--bet-status-open)',
+    },
+    open: {
+      background: 'var(--bet-status-open)',
+    },
+    signing: {
+      background: 'var(--bet-status-open)',
+    },
+    moderate: {
+      background: 'var(--bet-status-open)',
+    },
+    live: {
+      background: 'var(--bet-status-live)',
+    },
+    closed: {
+      background: 'var(--bet-status-closed)',
+    },
+    canceled: {
+      background: 'var(--bet-status-canceled)',
     },
     p: {
       margin: '0',
     },
   }
   return status ? (
-    <div style={styles.status}>
+    <div style={{ ...styles.status, ...styles[status] }}>
       <p style={styles.p}>{status}</p>
     </div>
   ) : null

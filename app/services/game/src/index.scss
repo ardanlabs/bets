@@ -14,10 +14,14 @@
   --main-bg-color: #f0ead6;
   --text-color: #000000;
   --bets-color: #ffffff;
-  --status-open-box: #fff384;
-  --status-open-text: #d8a504;
   --onGoingBet-title-color: #515151;
   --success-color: #4bb543;
+  --bet-status-text: #efefef;
+  // Statuses
+  --bet-status-live: #679c7b;
+  --bet-status-open: #f2c745;
+  --bet-status-closed: #8e8e8e;
+  --bet-status-canceled: #ef6461;
   box-sizing: border-box;
   overflow: hidden;
 }
