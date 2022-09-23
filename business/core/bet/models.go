@@ -13,19 +13,19 @@ type Bet struct {
 	Description      string    `json:"description"`
 	Terms            string    `json:"terms"`
 	Amount           int       `json:"amount"`
-	ModeratorAddress string    `json:"moderator_address"`
+	ModeratorAddress string    `json:"moderatorAddress"`
 	Players          []Player  `json:"players"`
-	DateExpired      time.Time `json:"date_expired"`
-	DateCreated      time.Time `json:"date_created"`
-	DateUpdated      time.Time `json:"date_updated"`
+	DateExpired      time.Time `json:"dateExpired"`
+	DateCreated      time.Time `json:"dateCreated"`
+	DateUpdated      time.Time `json:"dateUpdated"`
 }
 
 // Player represents the connection between a Bet and an Account that is in
 // a player role.
 type Player struct {
-	BetID   string `db:"bet_id"`
+	BetID   string `db:"betId"`
 	Address string `db:"address"`
-	InFavor bool   `db:"in_favor"`
+	InFavor bool   `db:"inFavor"`
 }
 
 // NewBet is what we require from clients when adding a Bet.
@@ -33,16 +33,25 @@ type NewBet struct {
 	Description      string      `json:"description"`
 	Terms            string      `json:"terms"`
 	Amount           int         `json:"amount"`
-	ModeratorAddress string      `json:"moderator_address"`
+	ModeratorAddress string      `json:"moderatorAddress"`
 	Players          []NewPlayer `json:"players" validate:"required"`
-	DateExpired      time.Time   `json:"date_expired"`
+	DateExpired      time.Time   `json:"dateExpired"`
 }
 
 // NewPlayer represents the connection between a new Bet and an Account that is in
 // a player role.
 type NewPlayer struct {
 	Address string `db:"address"`
-	InFavor bool   `db:"in_favor"`
+	InFavor bool   `db:"inFavor"`
+}
+
+// UpdateBet is what we require from clients when updating a Bet.
+type UpdateBet struct {
+	Description      *string   `json:"description"`
+	Terms            *string   `json:"terms"`
+	Amount           *int      `json:"amount"`
+	ModeratorAddress *string   `json:"moderatorAddress"`
+	DateExpired      time.Time `json:"dateExpired"`
 }
 
 // ============================================================================

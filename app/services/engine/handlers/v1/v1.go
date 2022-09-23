@@ -59,6 +59,7 @@ func Routes(app *web.App, cfg Config) {
 	app.Handle(http.MethodGet, version, "/game/bets/:page/:rows", ggh.QueryBet)
 	app.Handle(http.MethodGet, version, "/game/bet/:id", ggh.QueryBetByID)
 	app.Handle(http.MethodPost, version, "/game/bet", ggh.CreateBet)
+	app.Handle(http.MethodPut, version, "/game/bet/:id", ggh.UpdateBet)
 
 	bgh := brunogrp.Handlers{
 		Bet: bet.NewCore(cfg.Log, cfg.DB),

@@ -127,7 +127,7 @@ func (c Core) CreateBet(ctx context.Context, nb NewBet, now time.Time) (Bet, err
 
 		// Create the bet.
 		dbBet.ID = validate.GenerateID()
-		dbBet.Status = "negotiation"
+		dbBet.Status = "open"
 		dbBet.Description = nb.Description
 		dbBet.Terms = nb.Terms
 		dbBet.Amount = nb.Amount
@@ -184,6 +184,55 @@ func (c Core) CreateBet(ctx context.Context, nb NewBet, now time.Time) (Bet, err
 	bet.Players = players
 
 	return bet, nil
+}
+
+// UpdateBet modifies data about a Bet. It will error if the specified ID is
+// invalid or does not reference an existing Bet.
+func (c Core) UpdateBet(ctx context.Context, betID string, uBet UpdateBet, now time.Time) error {
+	if err := validate.CheckID(betID); err != nil {
+		return ErrInvalidID
+	}
+
+	if err := validate.Check(uBet); err != nil {
+		return fmt.Errorf("validating data: %w", err)
+	}
+
+	dbBet, err := c.store.QueryBetByID(ctx, betID)
+	if err != nil {
+		if errors.Is(err, database.ErrDBNotFound) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("updating bet betID[%s]: %w", betID, err)
+	}
+
+	// Only not signed bets can be updated.
+	if dbBet.Status != "open" && dbBet.Status != "negotiating" {
+		return errors.New("only open or negotiating bets can be updated")
+	}
+
+	if uBet.Description != nil {
+		dbBet.Description = *uBet.Description
+	}
+	if uBet.Terms != nil {
+		dbBet.Terms = *uBet.Terms
+	}
+	if uBet.Amount != nil {
+		dbBet.Amount = *uBet.Amount
+	}
+	if uBet.ModeratorAddress != nil {
+		dbBet.ModeratorAddress = *uBet.ModeratorAddress
+	}
+	if uBet.DateExpired.IsZero() {
+		dbBet.DateExpired = uBet.DateExpired
+	}
+
+	dbBet.DateUpdated = now
+
+	if err := c.store.UpdateBet(ctx, dbBet); err != nil {
+		return fmt.Errorf("update bet: %w", err)
+	}
+
+	return nil
 }
 
 // QueryBet gets all Bets from the database.
