@@ -125,7 +125,7 @@ func (c Core) CreateBet(ctx context.Context, nb NewBet, now time.Time) (Bet, err
 			}
 		}
 
-		// Create the bet.
+		// Add the bet to the database.
 		dbBet.ID = validate.GenerateID()
 		dbBet.Status = "open"
 		dbBet.Description = nb.Description
@@ -159,19 +159,6 @@ func (c Core) CreateBet(ctx context.Context, nb NewBet, now time.Time) (Bet, err
 		return Bet{}, fmt.Errorf("tran: %w", err)
 	}
 
-	// Build the bet response content.
-	bet := Bet{
-		ID:               dbBet.ID,
-		Status:           dbBet.Status,
-		Description:      dbBet.Description,
-		Terms:            dbBet.Terms,
-		Amount:           dbBet.Amount,
-		ModeratorAddress: dbBet.ModeratorAddress,
-		DateExpired:      dbBet.DateExpired,
-		DateCreated:      dbBet.DateCreated,
-		DateUpdated:      dbBet.DateUpdated,
-	}
-
 	var players []Player
 	for _, player := range nb.Players {
 		players = append(players, Player{
@@ -181,7 +168,18 @@ func (c Core) CreateBet(ctx context.Context, nb NewBet, now time.Time) (Bet, err
 		})
 	}
 
-	bet.Players = players
+	bet := Bet{
+		ID:               dbBet.ID,
+		Status:           dbBet.Status,
+		Description:      dbBet.Description,
+		Terms:            dbBet.Terms,
+		Amount:           dbBet.Amount,
+		ModeratorAddress: dbBet.ModeratorAddress,
+		Players:          players,
+		DateExpired:      dbBet.DateExpired,
+		DateCreated:      dbBet.DateCreated,
+		DateUpdated:      dbBet.DateUpdated,
+	}
 
 	return bet, nil
 }
@@ -244,18 +242,6 @@ func (c Core) QueryBet(ctx context.Context, pageNumber int, rowsPerPage int) ([]
 
 	var bets []Bet
 	for _, dbBet := range dbBets {
-		bet := Bet{
-			ID:               dbBet.ID,
-			Status:           dbBet.Status,
-			Description:      dbBet.Description,
-			Terms:            dbBet.Terms,
-			Amount:           dbBet.Amount,
-			ModeratorAddress: dbBet.ModeratorAddress,
-			DateExpired:      dbBet.DateExpired,
-			DateCreated:      dbBet.DateCreated,
-			DateUpdated:      dbBet.DateUpdated,
-		}
-
 		dbPlayers, err := c.store.QueryBetPlayers(ctx, dbBet.ID, 1, 10)
 		if err != nil {
 			return nil, fmt.Errorf("query bet players: %w", err)
@@ -265,7 +251,19 @@ func (c Core) QueryBet(ctx context.Context, pageNumber int, rowsPerPage int) ([]
 		for _, dbPlayer := range dbPlayers {
 			players = append(players, Player(dbPlayer))
 		}
-		bet.Players = players
+
+		bet := Bet{
+			ID:               dbBet.ID,
+			Status:           dbBet.Status,
+			Description:      dbBet.Description,
+			Terms:            dbBet.Terms,
+			Amount:           dbBet.Amount,
+			ModeratorAddress: dbBet.ModeratorAddress,
+			Players:          players,
+			DateExpired:      dbBet.DateExpired,
+			DateCreated:      dbBet.DateCreated,
+			DateUpdated:      dbBet.DateUpdated,
+		}
 
 		bets = append(bets, bet)
 	}
@@ -287,18 +285,6 @@ func (c Core) QueryBetByID(ctx context.Context, betID string) (Bet, error) {
 		return Bet{}, fmt.Errorf("query: %w", err)
 	}
 
-	bet := Bet{
-		ID:               dbBet.ID,
-		Status:           dbBet.Status,
-		Description:      dbBet.Description,
-		Terms:            dbBet.Terms,
-		Amount:           dbBet.Amount,
-		ModeratorAddress: dbBet.ModeratorAddress,
-		DateExpired:      dbBet.DateExpired,
-		DateCreated:      dbBet.DateCreated,
-		DateUpdated:      dbBet.DateUpdated,
-	}
-
 	dbPlayers, err := c.store.QueryBetPlayers(ctx, dbBet.ID, 1, 10)
 	if err != nil {
 		return Bet{}, fmt.Errorf("query bet players: %w", err)
@@ -308,7 +294,19 @@ func (c Core) QueryBetByID(ctx context.Context, betID string) (Bet, error) {
 	for _, dbPlayer := range dbPlayers {
 		players = append(players, Player(dbPlayer))
 	}
-	bet.Players = players
+
+	bet := Bet{
+		ID:               dbBet.ID,
+		Status:           dbBet.Status,
+		Description:      dbBet.Description,
+		Terms:            dbBet.Terms,
+		Amount:           dbBet.Amount,
+		ModeratorAddress: dbBet.ModeratorAddress,
+		Players:          players,
+		DateExpired:      dbBet.DateExpired,
+		DateCreated:      dbBet.DateCreated,
+		DateUpdated:      dbBet.DateUpdated,
+	}
 
 	return bet, nil
 }
