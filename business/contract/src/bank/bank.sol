@@ -54,7 +54,7 @@ contract Bank {
     // PlaceBetsSigned will place bets for all participants.
     function PlaceBetsSigned(
         string    memory betId,
-        address[] memory bettors,
+        address[] memory participants,
         address   moderator,
         uint256   amount,
         uint256   expiration,
@@ -65,38 +65,38 @@ contract Bank {
     ) onlyOwner public {
 
         // Initialize the new bet's information.
-        betsMap[betId].NumParticipants = bettors.length;
+        betsMap[betId].NumParticipants = participants.length;
         betsMap[betId].Moderator = moderator;
         betsMap[betId].Expiration = expiration;
 
-        // Loop through bettor information and signatures.
-        for (uint bettor = 0; bettor < bettors.length; bettor++) {
+        // Loop through participant information and signatures.
+        for (uint i = 0; i < participants.length; i++) {
 
             // Hash the bet information.
-            bytes32 hash = hashPlaceBet(betId, bettors[bettor], moderator, amount, expiration, nonce[bettor]);
+            bytes32 hash = hashPlaceBet(betId, participants[i], moderator, amount, expiration, nonce[i]);
 
-            // Retrieve the bettor's public address from the signed hash and the
-            // bettor's signature.
-            address bettorAddress = ecrecover(hash, v[bettor], r[bettor], s[bettor]);
+            // Retrieve the participant's public address from the signed hash
+            // and the participant's signature.
+            address partAddress = ecrecover(hash, v[i], r[i], s[i]);
 
             // Ensure the address retrieved from the signature matches the bettor.
-            if (bettorAddress != bettors[bettor]) {
-                revert("invalid bettor");
+            if (partAddress != participants[i]) {
+                revert("invalid participant");
             }
 
             // Ensure the bettor has sufficient balance for the bet.
-            if (accountBalances[bettorAddress] < amount) {
+            if (accountBalances[partAddress] < amount) {
                 revert("insufficient funds");
             }
 
             // Store the bettor's address in the bet's Participants map.
-            betsMap[betId].Participants[bettorAddress] = true;
+            betsMap[betId].Participants[partAddress] = true;
 
             // Move the funds from the bettor's balance into the betting pool.
             betsMap[betId].Pool += amount;
-            accountBalances[bettorAddress] -= amount;
+            accountBalances[partAddress] -= amount;
 
-            emit EventLog(string.concat("betId[", betId, "] bettor[", Error.Addrtoa(bettorAddress), "] bet[", Error.Itoa(amount), "]"));
+            emit EventLog(string.concat("betId[", betId, "] part[", Error.Addrtoa(partAddress), "] bet[", Error.Itoa(amount), "]"));
         }
     }
 
@@ -137,12 +137,13 @@ contract Bank {
     // CancelBet allows participants to cancel a bet 30 days after cancelation.
     function CancelBet(
         string memory betId,
-        address[] memory bettors,
+        address[] memory participants,
         uint nonce,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) public {
+
         // Ensure the bet has expired.
         if (block.timestamp < betsMap[betId].Expiration + 30 days) {
             revert("bets may only be canceled 30+ days after expiration");
@@ -153,18 +154,18 @@ contract Bank {
             revert("bets may only be canceled if unreconciled");
         }
 
-        // Ensure the bettors provided match the bet's participants.
-        if (betsMap[betId].NumParticipants != bettors.length) {
+        // Ensure the participant's provided match the bet's participants.
+        if (betsMap[betId].NumParticipants != participants.length) {
             revert("invalid participants");
         }
-        for (uint i = 0; i < bettors.length; i++) {
-            if (!betsMap[betId].Participants[bettors[i]]) {
+        for (uint i = 0; i < participants.length; i++) {
+            if (!betsMap[betId].Participants[participants[i]]) {
                 revert ("invalid participant");
             }
         }
 
         // Hash the cancelation information.
-        bytes32 hash = hashCancel(betId, bettors, nonce);
+        bytes32 hash = hashCancel(betId, participants, nonce);
 
         // Get the address of the canceler.
         address canceler = ecrecover(hash, v, r, s);
@@ -183,8 +184,8 @@ contract Bank {
         uint256 amount = betsMap[betId].Pool / betsMap[betId].NumParticipants;
 
         // Refund the bet amount to all participants.
-        for (uint i = 0; i < bettors.length; i++) {
-            accountBalances[bettors[i]] += amount;
+        for (uint i = 0; i < participants.length; i++) {
+            accountBalances[participants[i]] += amount;
             betsMap[betId].Pool -= amount;
         }
     }
