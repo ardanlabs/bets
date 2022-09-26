@@ -131,7 +131,7 @@ func (b *Bank) PlaceBets(
 	// Set the fee
 	feeAmount := converter.USD2Wei(big.NewFloat(1))
 
-	tx, err := b.contract.PlaceBetsSigned(
+	tx, err := b.contract.PlaceBets(
 		tranOpts,
 		betID,
 		bettorAddresses,
@@ -190,7 +190,7 @@ func (b *Bank) Reconcile(
 	// Set the fee
 	feeAmount := converter.USD2Wei(big.NewFloat(1))
 
-	tx, err := b.contract.ReconcileSigned(
+	tx, err := b.contract.Reconcile(
 		tranOpts,
 		betID,
 		winnerAddresses,

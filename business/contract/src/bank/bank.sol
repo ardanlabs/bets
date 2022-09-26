@@ -52,7 +52,7 @@ contract Bank {
     }
 
     // PlaceBetsSigned will place bets for all participants.
-    function PlaceBetsSigned(
+    function PlaceBets(
         string    memory betId,
         address[] memory participants,
         address   moderator,
@@ -106,7 +106,7 @@ contract Bank {
     }
 
     // ReconcileSigned allows a moderator to reconcile a bet.
-    function ReconcileSigned(
+    function Reconcile(
         string memory betId,
         address[] memory winners,
         address moderator,
@@ -117,9 +117,17 @@ contract Bank {
         uint256 feeAmount
     ) onlyOwner public {
 
+        // Take the fee from the bet pool.
+        takeFee(betId, feeAmount);
+
         // Ensure the bet has passed its expiration.
         if (block.timestamp < betsMap[betId].Expiration) {
             revert("bet has not yet expired");
+        }
+
+        // Ensure the bet has not already been reconciled.
+        if (betsMap[betId].Pool == 0) {
+            revert("bet is already reconciled");
         }
 
         // Hash the reconciliation information.
@@ -134,30 +142,12 @@ contract Bank {
             revert("invalid moderator signature");
         }
 
-        // Ensure the total winnings has enough for the fee.
-        if (betsMap[betId].Pool < feeAmount) {
-            revert("bet pool too low for fee");
-        }
-
-        // Take fee.
-        betsMap[betId].Pool -= feeAmount;
-        accountBalances[Owner] += feeAmount;
-
-        // Set winnings amount per winner.
-        uint256 winnings = betsMap[betId].Pool / winners.length;
-
-        // Reconcile winnings.
-        for (uint winner = 0; winner < winners.length; winner++) {
-            accountBalances[winners[winner]] += winnings;
-            emit EventLog(string.concat("betId[", betId, "] participant[", Error.Addrtoa(winners[winner]), "] winnings[", Error.Itoa(winnings), "]"));
-        }
-
-        // Empty bet pool.
-        betsMap[betId].Pool = 0;
+        // Distribute remaining pool to the winners.
+        distributePool(betId, winners);
     }
 
-    // ModeratorCancelBet allows the moderator to cancel a bet at any time.
-    function ModeratorCancelBet(
+    // ModeratorCancel allows the moderator to cancel a bet at any time.
+    function ModeratorCancel(
         string    memory betId,
         address[] memory participants,
         uint      nonce,
@@ -167,13 +157,11 @@ contract Bank {
         uint256   feeAmount
     ) onlyOwner public {
 
-        // Ensure the bet's pool has enough for the fee
-        if (betsMap[betId].Pool < feeAmount) {
-            revert("bet pool too low for fee");
-        }
+        // Take the fee from the bet pool.
+        takeFee(betId, feeAmount);
 
         // Ensure the bet has not already been reconciled.
-        if (betsMap[betId].Pool > 0) {
+        if (betsMap[betId].Pool == 0) {
             revert("bets may only be canceled if unreconciled");
         }
 
@@ -186,33 +174,16 @@ contract Bank {
             revert("signer does not have the authority to cancel the bet");
         }
 
-        // Ensure the participants provided match the bet's participants.
-        if (betsMap[betId].NumParticipants != participants.length) {
-            revert("invalid participants");
-        }
-        for (uint i = 0; i < participants.length; i++) {
-            if (!betsMap[betId].Participants[participants[i]]) {
-                revert("invalid participant");
-            }
-        }
+        // Ensure the participants match the bet's participants.
+        ensureParticipants(betId, participants);
 
-        // Subtract the fee from the bet pool.
-        betsMap[betId].Pool -= feeAmount;
-        accountBalances[Owner] += feeAmount;
-
-        // Refund remaining pool to all participants.
-        uint256 amount = betsMap[betId].Pool / participants.length;
-        for (uint i = 0; i < participants.length; i++) {
-            accountBalances[participants[i]] += amount;
-        }
-
-        // Clear bet pool.
-        betsMap[betId].Pool = 0;
+        // Perform the refund.
+        distributePool(betId, participants);
     }
 
-    // AbortBet allows all participants to sign to cancel a bet before it has
-    // expired.
-    function AbortBet(
+    // ParticipantCancel allows all participants to sign to cancel a bet before
+    // it has expired.
+    function ParticipantCancel(
         string    memory betId,
         address[] memory participants,
         uint[]    memory nonce,
@@ -222,25 +193,16 @@ contract Bank {
         uint256   feeAmount
     ) onlyOwner public {
 
-        // Ensure the bet's pool has enough for the fee
-        if (betsMap[betId].Pool < feeAmount) {
-            revert("bet pool too low for fee");
-        }
+        // Take the fee from the bet pool.
+        takeFee(betId, feeAmount);
 
         // Ensure the bet has not already been reconciled.
-        if (betsMap[betId].Pool > 0) {
+        if (betsMap[betId].Pool == 0) {
             revert("bets may only be canceled if unreconciled");
         }
 
         // Ensure the participants provided match the bet's participants.
-        if (betsMap[betId].NumParticipants != participants.length) {
-            revert("invalid participants");
-        }
-        for (uint i = 0; i < participants.length; i++) {
-            if (!betsMap[betId].Participants[participants[i]]) {
-                revert("invalid participant");
-            }
-        }
+        ensureParticipants(betId, participants);
 
         // Ensure all participants have signed to abort the bet.
         if (betsMap[betId].NumParticipants != nonce.length) {
@@ -256,18 +218,23 @@ contract Bank {
             }
         }
 
-        // Subtract the fee from the bet pool.
-        betsMap[betId].Pool -= feeAmount;
-        accountBalances[Owner] += feeAmount;
+        // Perform the refund.
+        distributePool(betId, participants);
+    }
 
-        // Refund remaining pool to all participants.
-        uint256 amount = betsMap[betId].Pool / participants.length;
-        for (uint i = 0; i < participants.length; i++) {
-            accountBalances[participants[i]] += amount;
+    // OwnerCancel allows the owner to cancel a bet at any time.
+    function OwnerCancel(string memory betId, address[] memory participants, uint256 feeAmount) onlyOwner public {
+
+        // Take the fee from the bet pool.
+        takeFee(betId, feeAmount);
+
+        // If the pool is zero it's already reconciled or couldn't handle the fee.
+        if (betsMap[betId].Pool == 0) {
+            revert("bet pool empty");
         }
 
-        // Clear bet pool.
-        betsMap[betId].Pool = 0;
+        // Perform the refund.
+        distributePool(betId, participants);
     }
 
     // AccountBalance returns the specified account's balance and amount bet.
@@ -278,8 +245,9 @@ contract Bank {
     // =========================================================================
     // Account Only Calls
 
-    // CancelBet allows individual participants to cancel a bet 30 days after cancelation.
-    function CancelBet(
+    // ExpiredCancel allows individual participants to cancel a bet 30 days
+    // after cancelation.
+    function ExpiredCancel(
         string memory betId,
         address[] memory participants,
         uint nonce,
@@ -294,19 +262,12 @@ contract Bank {
         }
 
         // Ensure the bet has not been reconciled.
-        if (betsMap[betId].Pool > 0) {
+        if (betsMap[betId].Pool == 0) {
             revert("bets may only be canceled if unreconciled");
         }
 
         // Ensure the participant's provided match the bet's participants.
-        if (betsMap[betId].NumParticipants != participants.length) {
-            revert("invalid participants");
-        }
-        for (uint i = 0; i < participants.length; i++) {
-            if (!betsMap[betId].Participants[participants[i]]) {
-                revert ("invalid participant");
-            }
-        }
+        ensureParticipants(betId, participants);
 
         // Hash the cancelation information.
         bytes32 hash = hashCancel(betId, participants, nonce);
@@ -324,14 +285,8 @@ contract Bank {
             revert("canceler did not request cancelation");
         }
 
-        // Calculate the bet amount.
-        uint256 amount = betsMap[betId].Pool / betsMap[betId].NumParticipants;
-
-        // Refund the bet amount to all participants.
-        for (uint i = 0; i < participants.length; i++) {
-            accountBalances[participants[i]] += amount;
-            betsMap[betId].Pool -= amount;
-        }
+        // Refund the pool to all participants.
+        distributePool(betId, participants);
     }
 
     // Balance returns the balance of the caller.
@@ -361,6 +316,58 @@ contract Bank {
     }
 
     // =========================================================================
+
+    // ensureParticipants will ensure the provided addresses are a complete
+    // match for a given bet's participants.
+    function ensureParticipants(string memory betId, address[] memory addresses) internal view {
+
+        // Ensure the participants provided match the bet's participants.
+        if (betsMap[betId].NumParticipants != addresses.length) {
+            revert("invalid participants");
+        }
+        for (uint i = 0; i < addresses.length; i++) {
+            if (!betsMap[betId].Participants[addresses[i]]) {
+                revert("invalid participant");
+            }
+        }
+    }
+
+    // takeFee will take the fee from the bet's pool.
+    function takeFee(string memory betId, uint256 feeAmount) internal {
+
+        // Ensure the pool is large enough for the fee.
+        if (betsMap[betId].Pool < feeAmount) {
+            accountBalances[Owner] += betsMap[betId].Pool;
+            betsMap[betId].Pool = 0;
+
+            // Do not continue transaction, nothing left in pool.
+            revert("bet pool too low for fee");
+        }
+
+        // Subtract the fee from the pool.
+        betsMap[betId].Pool -= feeAmount;
+        accountBalances[Owner] += feeAmount;
+    }
+
+    // distributePool will distribute a bet's pool to the provided participants.
+    function distributePool(string memory betId, address[] memory participants) internal {
+
+        // Distribute the remaining pool to all participants. If this is a
+        // fractional value then it is floored by default. The remainder will
+        // later be added to the Owner account.
+        uint256 amount = betsMap[betId].Pool / participants.length;
+        for (uint i = 0; i < participants.length; i++) {
+            accountBalances[participants[i]] += amount;
+            betsMap[betId].Pool -= amount;
+            emit EventLog(string.concat("betId[", betId, "] participant[", Error.Addrtoa(participants[i]), "] amount[", Error.Itoa(amount), "]"));
+        }
+
+        // If there is a remainder, add it to the Owner's account.
+        accountBalances[Owner] += betsMap[betId].Pool;
+
+        // Clear the bet pool.
+        betsMap[betId].Pool = 0;
+    }
 
     // hashPlaceBet is an internal function to create a hash for the given bet
     // placement information.
