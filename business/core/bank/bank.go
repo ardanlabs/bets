@@ -105,6 +105,8 @@ func (b *Bank) PlaceBets(
 	nonce []*big.Int,
 	signatures [][]byte,
 ) (*types.Transaction, *types.Receipt, error) {
+	converter := currency.NewDefaultConverter()
+
 	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
@@ -126,6 +128,9 @@ func (b *Bank) PlaceBets(
 	r := [][32]byte{}
 	s := [][32]byte{}
 
+	// Set the fee
+	feeAmount := converter.USD2Wei(big.NewFloat(1))
+
 	tx, err := b.contract.PlaceBetsSigned(
 		tranOpts,
 		betID,
@@ -135,6 +140,7 @@ func (b *Bank) PlaceBets(
 		expires,
 		nonce,
 		v, r, s,
+		feeAmount,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("place bet: %w", err)
@@ -162,6 +168,8 @@ func (b *Bank) Reconcile(
 	nonce *big.Int,
 	signature []byte,
 ) (*types.Transaction, *types.Receipt, error) {
+	converter := currency.NewDefaultConverter()
+
 	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
@@ -179,6 +187,9 @@ func (b *Bank) Reconcile(
 	r := [32]byte{}
 	s := [32]byte{}
 
+	// Set the fee
+	feeAmount := converter.USD2Wei(big.NewFloat(1))
+
 	tx, err := b.contract.ReconcileSigned(
 		tranOpts,
 		betID,
@@ -186,6 +197,7 @@ func (b *Bank) Reconcile(
 		moderatorAddress,
 		nonce,
 		v, r, s,
+		feeAmount,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("reconcile: %w", err)
