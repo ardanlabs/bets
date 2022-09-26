@@ -123,11 +123,6 @@ func (b *Bank) PlaceBets(
 
 	expires := new(big.Int).SetInt64(expiration.Unix())
 
-	// TODO: extract v, r, s from signatures
-	v := []uint8{0}
-	r := [][32]byte{}
-	s := [][32]byte{}
-
 	// Set the fee
 	feeAmount := converter.USD2Wei(big.NewFloat(1))
 
@@ -139,7 +134,7 @@ func (b *Bank) PlaceBets(
 		betAmount,
 		expires,
 		nonce,
-		v, r, s,
+		signatures,
 		feeAmount,
 	)
 	if err != nil {
@@ -182,11 +177,6 @@ func (b *Bank) Reconcile(
 
 	moderatorAddress := common.HexToAddress(moderator)
 
-	// TODO: extract v, r, s from signature
-	v := uint8(0)
-	r := [32]byte{}
-	s := [32]byte{}
-
 	// Set the fee
 	feeAmount := converter.USD2Wei(big.NewFloat(1))
 
@@ -196,7 +186,7 @@ func (b *Bank) Reconcile(
 		winnerAddresses,
 		moderatorAddress,
 		nonce,
-		v, r, s,
+		signature,
 		feeAmount,
 	)
 	if err != nil {

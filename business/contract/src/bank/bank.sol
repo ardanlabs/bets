@@ -66,9 +66,7 @@ contract Bank {
         uint256   amount,
         uint256   expiration,
         uint[]    memory nonce,
-        uint8[]   memory v,
-        bytes32[] memory r,
-        bytes32[] memory s,
+        bytes[]   calldata signatures,
         uint256   feeAmount
     ) onlyOwner public {
 
@@ -88,7 +86,10 @@ contract Bank {
 
             // Retrieve the participant's public address from the signed hash
             // and the participant's signature.
-            address partAddress = ecrecover(hash, v[i], r[i], s[i]);
+            (address partAddress, Error.Err memory err) = extractAddress(hash, signatures[i]);
+            if (err.isError) {
+                revert(err.msg);
+            }
 
             // Ensure the address retrieved from the signature matches the participant.
             if (partAddress != participants[i]) {
@@ -121,18 +122,19 @@ contract Bank {
 
     // ReconcileSigned allows a moderator to reconcile a bet.
     function Reconcile(
-        string memory betId,
+        string    memory betId,
         address[] memory winners,
-        address moderator,
-        uint nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s,
-        uint256 feeAmount
+        address   moderator,
+        uint      nonce,
+        bytes     calldata signature,
+        uint256   feeAmount
     ) onlyOwner public {
 
         // Take the fee from the bet pool.
-        takeFee(betId, feeAmount);
+        Error.Err memory feeErr = takeFee(betId, feeAmount);
+        if (feeErr.isError) {
+            revert(feeErr.msg);
+        }
 
         // Ensure the bet has passed its expiration.
         if (block.timestamp < betsMap[betId].Expiration) {
@@ -153,7 +155,10 @@ contract Bank {
         bytes32 hash = hashReconcile(betId, winners, moderator, nonce);
 
         // Retrieve the moderator from the signed hash and signature.
-        address validateModerator = ecrecover(hash, v, r, s);
+        (address validateModerator, Error.Err memory addrErr) = extractAddress(hash, signature);
+        if (addrErr.isError) {
+            revert(addrErr.msg);
+        }
 
         // Ensure the moderator on file for the bet is the one that signed to
         // reconcile the bet.
@@ -172,14 +177,15 @@ contract Bank {
     function ModeratorCancel(
         string    memory betId,
         uint      nonce,
-        uint8     v,
-        bytes32   r,
-        bytes32   s,
+        bytes     calldata signature,
         uint256   feeAmount
     ) onlyOwner public {
 
         // Take the fee from the bet pool.
-        takeFee(betId, feeAmount);
+        Error.Err memory feeErr = takeFee(betId, feeAmount);
+        if (feeErr.isError) {
+            revert(feeErr.msg);
+        }
 
         // Ensure the bet has not already been reconciled.
         if (betsMap[betId].Pool == 0) {
@@ -188,7 +194,10 @@ contract Bank {
 
         // Retrieve the signer.
         bytes32 hash = hashCancel(betId, betsMap[betId].Participants, nonce);
-        address signer = ecrecover(hash, v, r, s);
+        (address signer, Error.Err memory err) = extractAddress(hash, signature);
+        if (err.isError) {
+            revert(err.msg);
+        }
 
         // Ensure the signer is the moderator on file for the bet.
         if (signer != betsMap[betId].Moderator) {
@@ -201,7 +210,10 @@ contract Bank {
         }
 
         // Ensure the participants match the bet's participants.
-        ensureParticipants(betId, betsMap[betId].Participants);
+        (Error.Err memory partErr) = ensureParticipants(betId, betsMap[betId].Participants);
+        if (partErr.isError) {
+            revert(partErr.msg);
+        }
 
         // Perform the refund.
         distributePool(betId, betsMap[betId].Participants);
@@ -215,14 +227,15 @@ contract Bank {
     function ParticipantCancel(
         string    memory betId,
         uint[]    memory nonce,
-        uint8[]   memory v,
-        bytes32[] memory r,
-        bytes32[] memory s,
+        bytes[]   calldata signatures,
         uint256   feeAmount
     ) onlyOwner public {
 
         // Take the fee from the bet pool.
-        takeFee(betId, feeAmount);
+        Error.Err memory feeErr = takeFee(betId, feeAmount);
+        if (feeErr.isError) {
+            revert(feeErr.msg);
+        }
 
         // Ensure the bet has not already been reconciled.
         if (betsMap[betId].Pool == 0) {
@@ -230,7 +243,10 @@ contract Bank {
         }
 
         // Ensure the participants provided match the bet's participants.
-        ensureParticipants(betId, betsMap[betId].Participants);
+        (Error.Err memory partErr) = ensureParticipants(betId, betsMap[betId].Participants);
+        if (partErr.isError) {
+            revert(partErr.msg);
+        }
 
         // Ensure all participants have signed to abort the bet.
         if (betsMap[betId].Participants.length != nonce.length) {
@@ -240,7 +256,10 @@ contract Bank {
         // Ensure all signatories are participants in the bet.
         for (uint i = 0; i < nonce.length; i++) {
             bytes32 hash = hashCancel(betId, betsMap[betId].Participants, nonce[i]);
-            address signer = ecrecover(hash, v[i], r[i], s[i]);
+            (address signer, Error.Err memory err) = extractAddress(hash, signatures[i]);
+            if (err.isError){
+                revert(err.msg);
+            }
             if (!betsMap[betId].IsParticipant[signer]) {
                 revert("invalid signer");
             }
@@ -257,7 +276,10 @@ contract Bank {
     function OwnerCancel(string memory betId, uint256 feeAmount) onlyOwner public {
 
         // Take the fee from the bet pool.
-        takeFee(betId, feeAmount);
+        Error.Err memory feeErr = takeFee(betId, feeAmount);
+        if (feeErr.isError) {
+            revert(feeErr.msg);
+        }
 
         // If the pool is zero it's already reconciled or couldn't handle the fee.
         if (betsMap[betId].Pool == 0) {
@@ -337,21 +359,22 @@ contract Bank {
 
     // ensureParticipants will ensure the provided addresses are a complete
     // match for a given bet's participants.
-    function ensureParticipants(string memory betId, address[] memory addresses) internal view {
+    function ensureParticipants(string memory betId, address[] memory addresses) internal view returns (Error.Err memory) {
 
         // Ensure the participants provided match the bet's participants.
         if (betsMap[betId].Participants.length != addresses.length) {
-            revert("invalid participants");
+            return Error.New("invalid participants");
         }
         for (uint i = 0; i < addresses.length; i++) {
             if (!betsMap[betId].IsParticipant[addresses[i]]) {
-                revert("invalid participant");
+                return Error.New("invalid participant");
             }
         }
+        return Error.None();
     }
 
     // takeFee will take the fee from the bet's pool.
-    function takeFee(string memory betId, uint256 feeAmount) internal {
+    function takeFee(string memory betId, uint256 feeAmount) internal returns (Error.Err memory) {
 
         // Ensure the pool is large enough for the fee.
         if (betsMap[betId].Pool < feeAmount) {
@@ -359,12 +382,14 @@ contract Bank {
             betsMap[betId].Pool = 0;
 
             // Do not continue transaction, nothing left in pool.
-            revert("bet pool too low for fee");
+            return Error.New("bet pool too low for fee");
         }
 
         // Subtract the fee from the pool.
         betsMap[betId].Pool -= feeAmount;
         accounts[Owner].Balance += feeAmount;
+
+        return Error.None();
     }
 
     // distributePool will distribute a bet's pool to the provided participants.
@@ -417,6 +442,20 @@ contract Bank {
     // of a given bet.
     function hashCancel(string memory betId, address[] memory participants, uint nonce) internal pure returns (bytes32) {
         return ethSignedHash(keccak256(abi.encodePacked(betId, participants, nonce)));
+    }
+
+    // extractAddress expects the raw data that was signed and will apply the Ethereum
+    // salt value manually. This hides the underlying implementation of the salt.
+    function extractAddress(bytes32 data, bytes calldata sig) private pure returns (address, Error.Err memory) {
+        if (sig.length != 65) {
+            return (address(0), Error.New("invalid signature length"));
+        }
+
+        bytes32 r = bytes32(sig[:32]);
+        bytes32 s = bytes32(sig[32:64]);
+        uint8 v = uint8(sig[64]);
+
+        return (ecrecover(data, v, r, s), Error.None());
     }
 
     // ethSignedHash is an internal function which signs a hash with the
