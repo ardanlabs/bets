@@ -5,20 +5,23 @@ import "./error.sol";
 
 contract Bank {
 
-    // BetChannel represents an individual bet's structure.
-    struct BetChannel {
+    // Bet represents an individual bet's structure.
+    struct Bet {
+        bool                      Exists;
         mapping (address => bool) IsParticipant;
-        address[] Participants;
-        address Moderator;
-        uint256 Pool;
-        uint256 Expiration;
+        address[]                 Participants;
+        address                   Moderator;
+        uint256                   Pool;
+        uint256                   Expiration;
     }
 
     // Account represents account information for an account.
     struct Account {
         uint256 Balance;
-        uint Nonce;
+        uint    Nonce;
     }
+
+    // =========================================================================
 
     // Owner represents the address who deployed the contract.
     address public Owner;
@@ -27,8 +30,8 @@ contract Bank {
     // moderators, and the Owner.
     mapping (address => Account) private accounts;
 
-    // betsMap represents current bets, organized by Bet ID.
-    mapping (string => BetChannel) private betsMap;
+    // bets represents current bets, organized by Bet ID.
+    mapping (string => Bet) private bets;
 
     // EventLog provides support for external logging.
     event EventLog(string value);
@@ -49,95 +52,106 @@ contract Bank {
         _;
     }
 
-    // Drain will drain the full value of the contract and transfer it to another
-    // contract/wallet address.
-    function Drain(address target) onlyOwner payable public {
-        uint balance = address(this).balance;
-        address payable account = payable(target);
-        account.transfer(balance);
-        emit EventLog(string.concat("transfer[", Error.Itoa(balance), "]"));
+    // Drain will drain the full value of the contract to the contract owner.
+    function Drain() onlyOwner payable public {
+        address payable account = payable(msg.sender);
+        uint256 bal = address(this).balance;
+
+        account.transfer(bal);
+        emit EventLog(string.concat("drain[", Error.Addrtoa(account), "] amount[", Error.Itoa(bal), "]"));
     }
 
-    // PlaceBetsSigned will place bets for all participants.
-    function PlaceBets(
-        string    memory betId,
-        address[] memory participants,
-        address   moderator,
-        uint256   amount,
-        uint256   expiration,
-        uint[]    memory nonce,
-        bytes[]   calldata signatures,
-        uint256   feeAmount
+    // PlaceBet will add a bet to the system that is considered a live bet.
+    function PlaceBet(
+        string    memory   betId,        // Unique Bet identifier
+        uint256            amount,       // Amount per participant is betting
+        uint256            feeAmount,    // Amount per participant fee
+        uint256            expiration,   // Time the bet expires
+        address            moderator,    // Address of the moderator
+        address[] memory   participants, // List of participant addresses
+        uint[]    memory   nonce,        // Nonce used per participant for signing
+        bytes[]   calldata signatures    // List of participant signatures
     ) onlyOwner public {
 
-        // Initialize the new bet's information.
-        betsMap[betId].Participants = participants;
-        betsMap[betId].Moderator = moderator;
-        betsMap[betId].Expiration = expiration;
+        // Construct a bet from the provided details.
+        Bet bet = Bet (
+            {
+                Exists:       true,
+                Participants: participants,
+                Moderator:    moderator,
+                Expiration:   expiration,
+                Pool:         (participants.length * amount)
+            }
+        );
 
-        // Calculate per-participant fee.
-        uint256 fee = feeAmount / participants.length;
-
-        // Loop through participant information and signatures.
+        // Validate the signatures, balances, nounces.
         for (uint i = 0; i < participants.length; i++) {
 
-            // Hash the bet information.
-            bytes32 hash = hashPlaceBet(betId, participants[i], moderator, amount, expiration, nonce[i]);
+            // Reconstruct the data that was signed by this participant.
+            bytes32 hashData = keccak256(abi.encode(betId, participants[i], moderator, amount, expiration, nonce[i]));
 
-            // Retrieve the participant's public address from the signed hash
-            // and the participant's signature.
-            (address partAddress, Error.Err memory err) = extractAddress(hash, signatures[i]);
+            // Retrieve the participant's public address from the signature.
+            (address participant, Error.Err memory err) = extractAddress(hashData, signatures[i]);
             if (err.isError) {
                 revert(err.msg);
             }
 
             // Ensure the address retrieved from the signature matches the participant.
-            if (partAddress != participants[i]) {
-                revert("invalid participant");
+            if (participant != participants[i]) {
+                revert(string.concat("part [", Error.Addrtoa(participants[i]), "] address doesn't match signature"));
             }
 
-            // Ensure the participant has sufficient balance for the bet.
-            if (accounts[partAddress].Balance < amount + fee) {
-                revert("insufficient funds");
+            // Ensure the participant has a sufficient balance for the bet.
+            if (accounts[participant].Balance < amount + feeAmount) {
+                revert(string.concat("part [", Error.Addrtoa(participants[i]), "] has an insufficient balance"));
             }
 
-            // Ensure the nonce is valid.
-            if (!validNonce(partAddress, nonce[i])) {
-                revert("invalid nonce for participant");
+            // Ensure the nonce is the expected nonce.
+            if (accounts[participant].Nonce != nonce) {
+                revert(string.concat("part [", Error.Addrtoa(participants[i]), "] invalid nonce [", Error.Itoa(nonce[i]) + "]"));
             }
 
             // Store the participant's address in the bet's Participants map.
-            betsMap[betId].IsParticipant[partAddress] = true;
-
-            // Move the funds from the participant's balance into the betting pool.
-            betsMap[betId].Pool += amount;
-            accounts[partAddress].Balance -= amount + fee;
-            accounts[Owner].Balance += fee;
-
-            emit EventLog(string.concat("betId[", betId, "] part[", Error.Addrtoa(partAddress), "] bet[", Error.Itoa(amount), "]"));
+            bet.IsParticipant[participant] = true;
         }
 
-        incrementNonces(participants);
+        // Add the bet to the bets maps.
+        bets[betId] = bet;
+
+        // Move the funds from the participant's balance into the betting pool.
+        for (uint i = 0; i < participants.length; i++) {
+            accounts[participants[i]].Balance -= amount + feeAmount;
+            accounts[participants[i]].Nonce++;
+            accounts[Owner].Balance += feeAmount;
+        }
+
+        emit EventLog(string.concat("betId [", betId, "] has been added to the system"));
     }
 
     // ReconcileSigned allows a moderator to reconcile a bet.
     function Reconcile(
-        string    memory betId,
-        address[] memory winners,
-        address   moderator,
-        uint      nonce,
-        bytes     calldata signature,
-        uint256   feeAmount
+        string    memory   betId,     // Unique Bet identifier
+        uint256            feeAmount, // Amount per participant fee
+        address[] memory   winners,   // List of winner addresses
+        address            moderator, // Address of the moderator 
+        uint               nonce,     // Nonce used by moderator for signing
+        bytes     calldata signature  // Moderator signature
     ) onlyOwner public {
 
-        // Take the fee from the bet pool.
-        Error.Err memory feeErr = takeFee(betId, feeAmount);
-        if (feeErr.isError) {
-            revert(feeErr.msg);
+        // Capture the bet information.
+        Bet bet = bets[betId];
+        if (!bet.Exists) {
+            revert("unknown bet id");
+        }
+
+        // Ensure the pool is large enough for the fee.
+        uint256 totalFee = feeAmount * bet.Participants.length;
+        if (bets[betId].Pool < totalFee) {
+            revert("the total fee is larger than the pool");
         }
 
         // Ensure the bet has passed its expiration.
-        if (block.timestamp < betsMap[betId].Expiration) {
+        if (block.timestamp < bet.Expiration) {
             revert("bet has not yet expired");
         }
 
@@ -164,6 +178,12 @@ contract Bank {
         // reconcile the bet.
         if (moderator != validateModerator) {
             revert("invalid moderator signature");
+        }
+
+        // Take the fee from the bet pool.
+        Error.Err memory feeErr = takeFee(betId, feeAmount);
+        if (feeErr.isError) {
+            revert(feeErr.msg);
         }
 
         // Distribute remaining pool to the winners.
@@ -374,19 +394,19 @@ contract Bank {
     }
 
     // takeFee will take the fee from the bet's pool.
-    function takeFee(string memory betId, uint256 feeAmount) internal returns (Error.Err memory) {
+    function takeFee(string memory betId, uint256 feeAmount) private returns (Error.Err memory) {
 
         // Ensure the pool is large enough for the fee.
-        if (betsMap[betId].Pool < feeAmount) {
-            accounts[Owner].Balance += betsMap[betId].Pool;
-            betsMap[betId].Pool = 0;
+        if (bets[betId].Pool < feeAmount) {
+            accounts[Owner].Balance += bets[betId].Pool;
+            bets[betId].Pool = 0;
 
             // Do not continue transaction, nothing left in pool.
             return Error.New("bet pool too low for fee");
         }
 
         // Subtract the fee from the pool.
-        betsMap[betId].Pool -= feeAmount;
+        bets[betId].Pool -= feeAmount;
         accounts[Owner].Balance += feeAmount;
 
         return Error.None();
@@ -412,55 +432,20 @@ contract Bank {
         betsMap[betId].Pool = 0;
     }
 
-    // validNonce ensures the provided nonce matches the nonce on file for the
-    // given account address.
-    function validNonce(address account, uint nonce) internal view returns (bool) {
-        return accounts[account].Nonce == nonce;
-    }
-
-    // incrementNonces will increment the nonces on file for all provided
-    // account addresses.
-    function incrementNonces(address[] memory addresses) internal {
-        for(uint i = 0; i < addresses.length; i++) {
-            accounts[addresses[i]].Nonce++;
-        }
-    }
-
-    // hashPlaceBet is an internal function to create a hash for the given bet
-    // placement information.
-    function hashPlaceBet(string memory betId, address participant, address moderator, uint256 amount, uint256 expiration, uint nonce) internal pure returns (bytes32) {
-        return ethSignedHash(keccak256(abi.encodePacked(betId, participant, moderator, amount, expiration, nonce)));
-    }
-
-    // hashReconcile is an internal function to create a hash for the reconciliation
-    // of a given bet.
-    function hashReconcile(string memory betId, address[] memory winners, address moderator, uint nonce) internal pure returns (bytes32) {
-        return ethSignedHash(keccak256(abi.encodePacked(betId, winners, moderator, nonce)));
-    }
-
-    // hashCancel is an internal function to create a hash for the cancelation
-    // of a given bet.
-    function hashCancel(string memory betId, address[] memory participants, uint nonce) internal pure returns (bytes32) {
-        return ethSignedHash(keccak256(abi.encodePacked(betId, participants, nonce)));
-    }
-
     // extractAddress expects the raw data that was signed and will apply the Ethereum
     // salt value manually. This hides the underlying implementation of the salt.
-    function extractAddress(bytes32 data, bytes calldata sig) private pure returns (address, Error.Err memory) {
+    function extractAddress(bytes32 hashData, bytes calldata sig) private pure returns (address, Error.Err memory) {
         if (sig.length != 65) {
             return (address(0), Error.New("invalid signature length"));
         }
+
+        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+        bytes32 saltedData = keccak256(abi.encodePacked(prefix, hashData));
 
         bytes32 r = bytes32(sig[:32]);
         bytes32 s = bytes32(sig[32:64]);
         uint8 v = uint8(sig[64]);
 
-        return (ecrecover(data, v, r, s), Error.None());
-    }
-
-    // ethSignedHash is an internal function which signs a hash with the
-    // Ethereum prefix.
-    function ethSignedHash(bytes32 hash) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
+        return (ecrecover(saltedData, v, r, s), Error.None());
     }
 }
