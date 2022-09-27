@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: engine-system
+data:
+  # This is the default but I want to show an example.
+  db_host: localhost
+  game_contract_id: 0x531130464929826c57BBBF989e44085a02eeB120

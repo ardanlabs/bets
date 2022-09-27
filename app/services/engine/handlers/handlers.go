@@ -17,6 +17,7 @@ import (
 	"github.com/ardanlabs/bets/foundation/events"
 	"github.com/ardanlabs/bets/foundation/web"
 	"github.com/ardanlabs/ethereum/currency"
+	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
 
@@ -122,13 +123,14 @@ func DebugStandardLibraryMux() *http.ServeMux {
 // debug application routes for the service. This bypassing the use of the
 // DefaultServerMux. Using the DefaultServerMux would be a security risk since
 // a dependency could inject a handler into our service without us knowing it.
-func DebugMux(build string, log *zap.SugaredLogger) http.Handler {
+func DebugMux(build string, log *zap.SugaredLogger, db *sqlx.DB) http.Handler {
 	mux := DebugStandardLibraryMux()
 
 	// Register debug check endpoints.
 	cgh := checkgrp.Handlers{
 		Build: build,
 		Log:   log,
+		DB:    db,
 	}
 	mux.HandleFunc("/debug/readiness", cgh.Readiness)
 	mux.HandleFunc("/debug/liveness", cgh.Liveness)

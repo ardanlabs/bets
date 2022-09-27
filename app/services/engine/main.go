@@ -12,10 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ardanlabs/bets/business/sys/database"
-
 	"github.com/ardanlabs/bets/app/services/engine/handlers"
 	"github.com/ardanlabs/bets/business/core/bank"
+	"github.com/ardanlabs/bets/business/sys/database"
 	"github.com/ardanlabs/bets/business/web/auth"
 	"github.com/ardanlabs/bets/foundation/events"
 	"github.com/ardanlabs/bets/foundation/keystore"
@@ -106,7 +105,7 @@ func run(log *zap.SugaredLogger) error {
 		},
 	}
 
-	const prefix = ""
+	const prefix = "BETS"
 	help, err := conf.Parse(prefix, &cfg)
 	if err != nil {
 		if errors.Is(err, conf.ErrHelpWanted) {
@@ -205,7 +204,7 @@ func run(log *zap.SugaredLogger) error {
 	// related endpoints. This includes the standard library endpoints.
 
 	// Construct the mux for the debug calls.
-	debugMux := handlers.DebugMux(build, log)
+	debugMux := handlers.DebugMux(build, log, db)
 
 	// Start the service listening for debug requests.
 	// Not concerned with shutting this down with load shedding.
