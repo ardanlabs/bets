@@ -95,7 +95,7 @@ func run(log *zap.SugaredLogger) error {
 		Bank struct {
 			KeyPath          string        `conf:"default:zarf/ethereum/keystore/UTC--2022-05-12T14-47-50.112225000Z--6327a38415c53ffb36c11db55ea74cc9cb4976fd"`
 			PassPhrase       string        `conf:"default:123"`
-			Network          string        `conf:"default:http://localhost:8545"`
+			Network          string        `conf:"default:http://host.docker.internal:8545"`
 			Timeout          time.Duration `conf:"default:10s"`
 			CoinMarketCapKey string        `conf:"default:a8cd12fb-d056-423f-877b-659046af0aa5"`
 		}
