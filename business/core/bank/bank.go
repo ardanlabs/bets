@@ -105,6 +105,8 @@ func (b *Bank) PlaceBets(
 	nonce []*big.Int,
 	signatures [][]byte,
 ) (*types.Transaction, *types.Receipt, error) {
+	converter := currency.NewDefaultConverter()
+
 	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
@@ -121,12 +123,10 @@ func (b *Bank) PlaceBets(
 
 	expires := new(big.Int).SetInt64(expiration.Unix())
 
-	// TODO: extract v, r, s from signatures
-	v := []uint8{0}
-	r := [][32]byte{}
-	s := [][32]byte{}
+	// Set the fee
+	feeAmount := converter.USD2Wei(big.NewFloat(1))
 
-	tx, err := b.contract.PlaceBetsSigned(
+	tx, err := b.contract.PlaceBets(
 		tranOpts,
 		betID,
 		bettorAddresses,
@@ -134,7 +134,8 @@ func (b *Bank) PlaceBets(
 		betAmount,
 		expires,
 		nonce,
-		v, r, s,
+		signatures,
+		feeAmount,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("place bet: %w", err)
@@ -162,6 +163,8 @@ func (b *Bank) Reconcile(
 	nonce *big.Int,
 	signature []byte,
 ) (*types.Transaction, *types.Receipt, error) {
+	converter := currency.NewDefaultConverter()
+
 	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
@@ -174,18 +177,17 @@ func (b *Bank) Reconcile(
 
 	moderatorAddress := common.HexToAddress(moderator)
 
-	// TODO: extract v, r, s from signature
-	v := uint8(0)
-	r := [32]byte{}
-	s := [32]byte{}
+	// Set the fee
+	feeAmount := converter.USD2Wei(big.NewFloat(1))
 
-	tx, err := b.contract.ReconcileSigned(
+	tx, err := b.contract.Reconcile(
 		tranOpts,
 		betID,
 		winnerAddresses,
 		moderatorAddress,
 		nonce,
-		v, r, s,
+		signature,
+		feeAmount,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("reconcile: %w", err)
