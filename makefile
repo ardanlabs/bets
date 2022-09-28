@@ -172,8 +172,8 @@ geth-new-account:
 # This will deposit 1 ETH into the two extra accounts from the coinbase account.
 # Do this if you delete the geth folder and start over or if the accounts need money.
 geth-deposit:
-	curl -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"eth_sendTransaction", "params": [{"from":"0x6327A38415C53FFb36c11db55Ea74cc9cB4976Fd", "to":"0x8E113078ADF6888B7ba84967F299F29AeCe24c55", "value":"0x1000000000000000000"}], "id":1}' 0.0.0.0:8545
-	curl -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"eth_sendTransaction", "params": [{"from":"0x6327A38415C53FFb36c11db55Ea74cc9cB4976Fd", "to":"0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7", "value":"0x1000000000000000000"}], "id":1}' 0.0.0.0:8545
+	curl -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"eth_sendTransaction", "params": [{"from":"0x6327A38415C53FFb36c11db55Ea74cc9cB4976Fd", "to":"0x8E113078ADF6888B7ba84967F299F29AeCe24c55", "value":"0x1000000000000000000"}], "id":1}' localhost:8545
+	curl -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"eth_sendTransaction", "params": [{"from":"0x6327A38415C53FFb36c11db55Ea74cc9cB4976Fd", "to":"0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7", "value":"0x1000000000000000000"}], "id":1}' localhost:8545
 
 docker-geth-up:
 	docker run -it --name geth -p 8545:8545 -p 30303:30303 -v $(shell pwd)/zarf/ethereum:/root/.ethereum ethereum/client-go --dev --ipcpath /root/.ethereum/geth.ipc --http --http.addr 0.0.0.0 --http.corsdomain '*' --allow-insecure-unlock --rpc.allow-unprotected-txs --http.vhosts '*' --mine --miner.threads 1 --verbosity 5 --datadir "/root/.ethereum" --unlock 0x6327A38415C53FFb36c11db55Ea74cc9cB4976Fd --password /root/.ethereum/password
