@@ -9,6 +9,7 @@ contract Bank {
     uint8 private constant STATE_NOTEXISTS  = 0;
     uint8 private constant STATE_LIVE       = 1;
     uint8 private constant STATE_RECONCILED = 2;
+    uint8 private constant STATE_CANCELLED  = 3;
 
     // =========================================================================
 
@@ -81,7 +82,7 @@ contract Bank {
 
     // PlaceBet will add a bet to the system that is considered a live bet.
     function PlaceBet(
-        string    memory   betId,        // Unique Bet identifier
+        string    memory   betID,        // Unique Bet identifier
         uint256            amount,       // Amount each participant is betting
         uint256            feeAmount,    // Amount each participant pays in upfront fees
         uint256            expiration,   // Time the bet expires
@@ -92,16 +93,9 @@ contract Bank {
     ) onlyOwner public {
 
         // Check to see if this bet already exists.
-        if (bets[betId].State != STATE_NOTEXISTS) {
+        if (bets[betID].State != STATE_NOTEXISTS) {
             revert("bet id already exists");
         }
-
-        // Construct a bet from the provided details.
-        bets[betId].State = STATE_LIVE;
-        bets[betId].Participants = participants;
-        bets[betId].Moderator = moderator;
-        bets[betId].Expiration = expiration;
-        bets[betId].Amount = (amount - feeAmount);
 
         // The total cost to each participant.
         uint256 totalCost = (amount + feeAmount);
@@ -112,8 +106,18 @@ contract Bank {
             uint           nonce       = nonces[i];
             bytes calldata signature   = signatures[i];
 
-            // Reconstruct the data that was signed by this participant.
-            bytes32 hashData = keccak256(abi.encode(betId, participant, nonce, moderator, amount, expiration));
+            // Ensure the participant has a sufficient balance for the bet.
+            if (accounts[participant].Balance < totalCost) {
+                revert(string.concat(Error.Addrtoa(participant), " has an insufficient balance"));
+            }
+
+            // Ensure the expected nonce for this participant is provided.
+            if (accounts[participant].Nonce != nonce) {
+                revert(string.concat(Error.Addrtoa(participant), " has an invalid nonce"));
+            }
+
+            // Reconstruct the data should have been signed by this participant.
+            bytes32 hashData = keccak256(abi.encode(betID, participant, nonce));
 
             // Retrieve the participant's public address from the signature.
             (address addr, Error.Err memory err) = extractAddress(hashData, signature);
@@ -123,22 +127,16 @@ contract Bank {
 
             // Ensure the address retrieved from the signature matches the participant.
             if (addr != participant) {
-                revert(string.concat("part [", Error.Addrtoa(participant), "] address doesn't match signature"));
+                revert(string.concat(Error.Addrtoa(participant), " address doesn't match signature"));
             }
-
-            // Ensure the participant has a sufficient balance for the bet.
-            if (accounts[participant].Balance < totalCost) {
-                revert(string.concat("part [", Error.Addrtoa(participant), "] has an insufficient balance"));
-            }
-
-            // Ensure the nonce is the expected nonce.
-            if (accounts[participant].Nonce != nonce) {
-                revert(string.concat("part [", Error.Addrtoa(participant), "] invalid nonce [", Error.Itoa(nonce), "]"));
-            }
-
-            // Store the participant's address in the bet's Participants map.
-            bets[betId].IsParticipant[participant] = true;
         }
+
+        // Construct a bet from the provided details.
+        bets[betID].State = STATE_LIVE;
+        bets[betID].Participants = participants;
+        bets[betID].Moderator = moderator;
+        bets[betID].Expiration = expiration;
+        bets[betID].Amount = (amount - feeAmount);
 
         // Move the funds from the participant's balance into the betting pool.
         for (uint i = 0; i < participants.length; i++) {
@@ -147,6 +145,9 @@ contract Bank {
             accounts[participant].Balance -= totalCost;
             accounts[participant].Nonce++;
             accounts[Owner].Balance += feeAmount;
+
+            // Mark this participant as part of this bet.
+            bets[betID].IsParticipant[participant] = true;
         }
 
         // Check if we need to add an account for the moderator.
@@ -154,19 +155,19 @@ contract Bank {
             accounts[moderator] = Account(true, 0, 0);
         }
 
-        emit EventLog(string.concat("betId [", betId, "] has been added to the system"));
+        emit EventLog(string.concat(betID, " has been added to the system"));
     }
 
     // ReconcileBet allows a moderator to reconcile a bet.
     function ReconcileBet(
-        string    memory   betId,     // Unique Bet identifier
+        string    memory   betID,     // Unique Bet identifier
         uint               nonce,     // Nonce used by moderator for signing
         bytes     calldata signature, // Moderator signature
         address[] memory   winners    // List of winner addresses
     ) onlyOwner public {
 
         // Capture the bet information.
-        Bet storage bet = bets[betId];
+        Bet storage bet = bets[betID];
 
         // Ensure the bet is live.
         if (bet.State != STATE_LIVE) {
@@ -180,11 +181,11 @@ contract Bank {
 
         // Ensure the nonce used by the moderator is the expected nonce.
         if (accounts[bet.Moderator].Nonce != nonce) {
-            revert(string.concat("mod [", Error.Addrtoa(bet.Moderator), "] invalid nonce [", Error.Itoa(nonce) , "]"));
+            revert("invalid moderator nonce");
         }
 
         // Reconstruct the data that was signed by the moderator.
-        bytes32 hashData = keccak256(abi.encode(betId, bet.Moderator, nonce));
+        bytes32 hashData = keccak256(abi.encode(betID, bet.Moderator, nonce));
 
         // Retrieve the moderator's public address from the signature.
         (address mod, Error.Err memory err) = extractAddress(hashData, signature);
@@ -213,23 +214,26 @@ contract Bank {
             accounts[winners[i]].Balance += bet.Amount;
         }
 
-        // Change the state of the bet to reconciled.
-        bet.State = STATE_RECONCILED;
-
         // Increment the moderator's nonce.
         accounts[bet.Moderator].Nonce++;
+
+        // Change the state of the bet to reconciled and set the amount to zero.
+        bet.State  = STATE_RECONCILED;
+        bet.Amount = 0;
+
+        emit EventLog(string.concat(betID, " has been reconciled")); 
     }
 
     // CancelBetModerator allows the moderator to cancel a bet at any time.
     function CancelBetModerator(
-        string    memory betId,
+        string    memory betID,
         uint256   feeAmount,
         uint      nonce,
         bytes     calldata signature
     ) onlyOwner public {
 
         // Capture the bet information.
-        Bet storage bet = bets[betId];
+        Bet storage bet = bets[betID];
 
         // Ensure the bet is live.
         if (bet.State != STATE_LIVE) {
@@ -238,11 +242,11 @@ contract Bank {
 
         // Ensure the nonce used by the moderator is the expected nonce.
         if (accounts[bet.Moderator].Nonce != nonce) {
-            revert(string.concat("mod [", Error.Addrtoa(bet.Moderator), "] invalid nonce [", Error.Itoa(nonce) , "]"));
+            revert("invalid moderator nonce");
         }
 
         // Reconstruct the data that was signed by the moderator.
-        bytes32 hashData = keccak256(abi.encode(betId, bet.Moderator, nonce));
+        bytes32 hashData = keccak256(abi.encode(betID, bet.Moderator, nonce));
 
         // Retrieve the moderator's public address from the signature.
         (address mod, Error.Err memory err) = extractAddress(hashData, signature);
@@ -265,18 +269,24 @@ contract Bank {
 
         // Increment the moderator's nonce.
         accounts[bet.Moderator].Nonce++;
+
+        // Change the state of the bet to cancelled and set the amount to zero.
+        bet.State  = STATE_CANCELLED;
+        bet.Amount = 0;
+
+        emit EventLog(string.concat(betID, " has been cancelled by moderator")); 
     }
 
     // CancelBetParticipants allows all the participants to cancel a bet.
     function CancelBetParticipants(
-        string    memory betId,
+        string    memory betID,
         uint256   feeAmount,
         uint[]    memory nonces,
         bytes[]   calldata signatures
     ) onlyOwner public {
 
         // Capture the bet information.
-        Bet storage bet = bets[betId];
+        Bet storage bet = bets[betID];
 
         // Ensure the bet is live.
         if (bet.State != STATE_LIVE) {
@@ -296,11 +306,11 @@ contract Bank {
 
             // Ensure the nonce used by the participant is the expected nonce.
             if (accounts[participant].Nonce != nonce) {
-                revert(string.concat("mod [", Error.Addrtoa(participant), "] invalid nonce [", Error.Itoa(nonce) , "]"));
+                revert(string.concat(Error.Addrtoa(participant), "] has an invalid nonce"));
             }
 
             // Reconstruct the data that was signed by the participant.
-            bytes32 hashData = keccak256(abi.encode(betId, participant, nonce, bet.Moderator));
+            bytes32 hashData = keccak256(abi.encode(betID, participant, nonce));
 
             // Retrieve the participant's public address from the signature.
             (address addr, Error.Err memory err) = extractAddress(hashData, signature);
@@ -310,7 +320,7 @@ contract Bank {
 
             // Ensure the participant's signature matches the address of file.
             if (addr != participant) {
-                revert("invalid participant signature");
+                revert(string.concat(Error.Addrtoa(participant), " address doesn't match signature"));
             }
 
             // Increment the nonce value for this participant.
@@ -323,16 +333,22 @@ contract Bank {
             accounts[bet.Participants[i]].Balance += totalAmount;
             accounts[Owner].Balance += feeAmount;
         }
+
+        // Change the state of the bet to cancelled and set the amount to zero.
+        bet.State  = STATE_CANCELLED;
+        bet.Amount = 0;
+
+        emit EventLog(string.concat(betID, " has been cancelled by all participants")); 
     }
 
     // CancelBetOwner allows the owner to cancel a bet at any time.
     function CancelBetOwner(
-        string  memory betId,
+        string  memory betID,
         uint256        feeAmount
     ) onlyOwner public {
 
         // Capture the bet information.
-        Bet storage bet = bets[betId];
+        Bet storage bet = bets[betID];
 
         // Ensure the bet is live.
         if (bet.State != STATE_LIVE) {
@@ -345,6 +361,12 @@ contract Bank {
             accounts[bet.Participants[i]].Balance += totalAmount;
             accounts[Owner].Balance += feeAmount;
         }
+
+        // Change the state of the bet to cancelled and set the amount to zero.
+        bet.State  = STATE_CANCELLED;
+        bet.Amount = 0;
+
+        emit EventLog(string.concat(betID, " has been cancelled by owner")); 
     }
 
     // =========================================================================
@@ -353,11 +375,11 @@ contract Bank {
     // CancelBetExpired allows an individual participant to cancel a bet 30 days
     // after cancelation.
     function CancelBetExpired(
-        string memory betId
+        string memory betID
     ) public {
 
         // Capture the bet information.
-        Bet storage bet = bets[betId];
+        Bet storage bet = bets[betID];
 
         // Ensure the bet is live.
         if (bet.State != STATE_LIVE) {
@@ -378,6 +400,12 @@ contract Bank {
         for (uint i = 0; i < bet.Participants.length; i++) {
             accounts[bet.Participants[i]].Balance += bet.Amount;
         }
+
+        // Change the state of the bet to cancelled and set the amount to zero.
+        bet.State  = STATE_CANCELLED;
+        bet.Amount = 0;
+
+        emit EventLog(string.concat(betID, " has been cancelled by ", Error.Addrtoa(msg.sender), " since expired")); 
     }
 
     // Balance returns the balance of the caller.
@@ -388,6 +416,7 @@ contract Bank {
     // Deposit the given amount to the account balance.
     function Deposit() payable public {
         accounts[msg.sender].Balance += msg.value;
+
         emit EventLog(string.concat("deposit[", Error.Addrtoa(msg.sender), "] balance[", Error.Itoa(accounts[msg.sender].Balance), "]"));
     }
 
