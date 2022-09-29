@@ -80,8 +80,8 @@ kind-load:
 
 kind-apply:
 	kustomize build zarf/k8s/kind/database-pod | kubectl apply -f -
-	kubectl wait --namespace=database-system --timeout=120s --for=condition=Available deployment/database-pod
 	kustomize build zarf/k8s/kind/geth-pod | kubectl apply -f -
+	kubectl wait --namespace=database-system --timeout=120s --for=condition=Available deployment/database-pod
 	kubectl wait --namespace=geth-system --timeout=120s --for=condition=Available deployment/geth-pod
 	kustomize build zarf/k8s/kind/engine-api-pod | kubectl apply -f -
 

@@ -14,5 +14,5 @@ nodes:
     - containerPort: 30303
       hostPort: 30303
   extraMounts:
-    - hostPath: /Users/leandrorichard/goProjects/src/github.com/ardanlabs/bets/zarf/ethereum
+    - hostPath: ./zarf/ethereum
       containerPath: /ethereum
