@@ -202,7 +202,7 @@ func (b *Bank) BetDetails(ctx context.Context, betID string) (BetInfo, error) {
 		State:        int(bbi.State),
 		Participants: participants,
 		Moderator:    bbi.Moderator.Hex(),
-		AmountGWei:   currency.Wei2GWei(bbi.Amount),
+		AmountGWei:   currency.Wei2GWei(bbi.AmountWei),
 		Expiration:   time.Unix(bbi.Expiration.Int64(), 0),
 	}
 

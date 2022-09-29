@@ -177,11 +177,8 @@ func Test_PlaceBet(t *testing.T) {
 	// Need a converter for handling ETH to USD to ETH conversions.
 	converter := currency.NewDefaultConverter()
 
-	// Connect owner to the smart contract.
-	ownerClient, err := bank.New(ctx, nil, ethereum.NetworkHTTPLocalhost, OwnerKeyPath, OwnerPassPhrase, contractID)
-	if err != nil {
-		t.Fatalf("error creating new bank for owner: %s", err)
-	}
+	// =========================================================================
+	// Give player accounts money
 
 	// Connect player 1 to the smart contract.
 	player1Client, err := bank.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player1KeyPath, Player1PassPhrase, contractID)
@@ -207,6 +204,15 @@ func Test_PlaceBet(t *testing.T) {
 		t.Fatalf("error making deposit player 1: %s", err)
 	}
 
+	// Connect owner to the smart contract.
+	ownerClient, err := bank.New(ctx, nil, ethereum.NetworkHTTPLocalhost, OwnerKeyPath, OwnerPassPhrase, contractID)
+	if err != nil {
+		t.Fatalf("error creating new bank for owner: %s", err)
+	}
+
+	// =========================================================================
+	// Place a bet
+
 	// We need a string for the bet id.
 	betID := "1234"
 
@@ -229,13 +235,15 @@ func Test_PlaceBet(t *testing.T) {
 		t.Fatalf("signing 2: %s", err)
 	}
 
-	// Set the bet to expire in an hour.
+	// Set the bet amounts and the time to expire in an hour.
 	expiration := time.Date(2022, time.September, 1, 1, 1, 1, 0, time.UTC)
+	amountGWei := converter.USD2GWei(big.NewFloat(10))
+	feeAmountGWei := converter.USD2GWei(big.NewFloat(1))
 
 	// Construct a PlaceBet to make the PlaceBet call.
 	pb := bank.PlaceBet{
-		AmountGWei:    converter.USD2GWei(big.NewFloat(10)),
-		FeeAmountGWei: converter.USD2GWei(big.NewFloat(1)),
+		AmountGWei:    amountGWei,
+		FeeAmountGWei: feeAmountGWei,
 		Expiration:    expiration,
 		Moderator:     ModeratorAddress,
 		Participants:  []string{Player1Address, Player2Address},
@@ -243,7 +251,7 @@ func Test_PlaceBet(t *testing.T) {
 		Signatures:    signatures,
 	}
 
-	// Player 1 bets $10 USD, providing a $5 bettors fee to the house.
+	// Place the bet inside the smart contract.
 	tx, receipt, err := ownerClient.PlaceBet(ctx, betID, pb)
 	if err != nil {
 		t.Fatalf("error calling PlaceBet: %s", err)
@@ -252,18 +260,49 @@ func Test_PlaceBet(t *testing.T) {
 	t.Log(converter.FmtTransaction(tx))
 	t.Log(converter.FmtTransactionReceipt(receipt, tx.GasPrice()))
 
+	// =========================================================================
+	// Check balances
+
 	// Capture player 1 balance in the smart contract.
 	player1Balance, err := player1Client.Balance(ctx)
 	if err != nil {
-		t.Fatalf("error calling balance for player 1: %s", err)
+		t.Fatalf("error getting balance for player1: %s", err)
 	}
 
-	// Player should have $9 USD left
-	expectedPlayer1BalanceGWei32, _ := converter.USD2GWei(big.NewFloat(9)).Float32()
-	actualPlayer1BalanceGWei32, _ := player1Balance.Float32()
-	if expectedPlayer1BalanceGWei32 != actualPlayer1BalanceGWei32 {
-		t.Fatalf("expecting player 1 balance to be %f; got %f", expectedPlayer1BalanceGWei32, actualPlayer1BalanceGWei32)
+	// Player1 balance should match amount minus the fee.
+	expBal := big.NewInt(0).Sub(currency.GWei2Wei(amountGWei), currency.GWei2Wei(feeAmountGWei))
+	gotBal := big.NewInt(0).Sub(currency.GWei2Wei(player1Balance), big.NewInt(1))
+	if gotBal.Cmp(expBal) != 0 {
+		t.Fatalf("wrong player1 balance, got %v  exp %v", gotBal, expBal)
 	}
+
+	// Capture player 2 balance in the smart contract.
+	player2Balance, err := player2Client.Balance(ctx)
+	if err != nil {
+		t.Fatalf("error getting balance for player2: %s", err)
+	}
+
+	// Player2 balance should match amount minus the fee.
+	gotBal = big.NewInt(0).Sub(currency.GWei2Wei(player2Balance), big.NewInt(1))
+	if gotBal.Cmp(expBal) != 0 {
+		t.Fatalf("wrong player2 balance, got %v  exp %v", gotBal, expBal)
+	}
+
+	// Capture owner balance in the smart contract.
+	ownerBalance, err := ownerClient.Balance(ctx)
+	if err != nil {
+		t.Fatalf("error getting balance for owner: %s", err)
+	}
+
+	// The owner should have received the fee for each participant.
+	expBal = big.NewInt(0).Mul(currency.GWei2Wei(feeAmountGWei), big.NewInt(int64(len(pb.Participants))))
+	gotBal = currency.GWei2Wei(ownerBalance)
+	if gotBal.Cmp(expBal) != 0 {
+		t.Fatalf("wrong owner balance, got %v  exp %v", gotBal, expBal)
+	}
+
+	// =========================================================================
+	// Check bet state
 
 	// Capture the bet details and make sure they have been saved correctly.
 	betInfo, err := ownerClient.BetDetails(ctx, betID)
@@ -298,23 +337,8 @@ func Test_PlaceBet(t *testing.T) {
 		t.Errorf("wrong expiration, got %v  exp %v", betInfo.Expiration.UTC(), expiration)
 	}
 
-	// TODO: Finish fee implementation
-	// Capture owner balance in the smart contract.
-	/*
-		ownerBalance, err := ownerClient.Balance(ctx)
-		if err != nil {
-			t.Fatalf("error calling balance for owner: %s", err)
-		}
-	*/
-
-	// The owner should have $5 USD.
-	/*
-		feeGWei32, _ := feeGwei.Float32()
-		ownerBalance32, _ := ownerBalance.Float32()
-		if ownerBalance32 != feeGWei32 {
-			t.Fatalf("expecting owner balance to be %f; got %f", feeGWei32, ownerBalance32)
-		}
-	*/
+	// =========================================================================
+	// Check Ethereum wallet balances
 }
 
 /*
