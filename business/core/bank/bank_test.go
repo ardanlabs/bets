@@ -230,7 +230,7 @@ func Test_PlaceBet(t *testing.T) {
 	}
 
 	// Set the bet to expire in an hour.
-	expiration := time.Now().Add(time.Hour)
+	expiration := time.Date(2022, time.September, 1, 1, 1, 1, 0, time.UTC)
 
 	// Construct a PlaceBet to make the PlaceBet call.
 	pb := bank.PlaceBet{
@@ -290,12 +290,12 @@ func Test_PlaceBet(t *testing.T) {
 	}
 
 	amountMinusFee := big.NewFloat(0).Sub(pb.AmountGWei, pb.FeeAmountGWei)
-	if betInfo.AmountGWei.Cmp(amountMinusFee) != 0 {
+	if currency.GWei2Wei(betInfo.AmountGWei).Cmp(currency.GWei2Wei(amountMinusFee)) != 0 {
 		t.Errorf("wrong amount, got %v  exp %v", betInfo.AmountGWei, amountMinusFee)
 	}
 
-	if betInfo.Expiration != expiration {
-		t.Errorf("wrong expiration, got %v  exp %v", betInfo.Expiration, expiration)
+	if betInfo.Expiration.UTC() != expiration {
+		t.Errorf("wrong expiration, got %v  exp %v", betInfo.Expiration.UTC(), expiration)
 	}
 
 	// TODO: Finish fee implementation
