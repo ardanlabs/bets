@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: engine-api-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: engine-api-pod # Base POD name
+  namespace: engine-api-system
+spec:
+  selector:
+    matchLabels:
+      app: engine-api # Selector for POD name search.
+  template:
+    metadata:
+      labels:
+        app: engine-api
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+      # engine-api container configuration
+      - name: engine-api
+        image: engine-amd64:1.0
+        ports:
+          - name: engine-api
+            containerPort: 3000
+          - name: ng-api-debug
+            containerPort: 4000
+        readinessProbe: # readiness probes mark the service available to accept traffic.
+          httpGet:
+            path: /debug/readiness
+            port: 4000
+          initialDelaySeconds: 15
+          periodSeconds: 15
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 2
+        livenessProbe: # liveness probes mark the service alive or dead (to be restarted).
+          httpGet:
+            path: /debug/liveness
+            port: 4000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 2
+        env:
+          - name: BETS_DB_HOST
+            valueFrom:
+              configMapKeyRef:
+                name: engine-api-config
+                key: db_host
+          - name: BETS_GAME_CONTRACT_ID
+            valueFrom:
+              configMapKeyRef:
+                name: engine-api-config
+                key: game_contract_id
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: engine-api-service
+  namespace: engine-api-system
+spec:
+  selector:
+    app: engine
+  ports:
+    - name: engine-api
+      port: 3000
+      targetPort: engine-api
+    - name: ng-api-debug
+      port: 4000
+      targetPort: ng-api-debug
