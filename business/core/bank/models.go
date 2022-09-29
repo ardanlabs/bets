@@ -5,8 +5,17 @@ import (
 	"time"
 )
 
-// NewBet represents the input required to place a bet.
-type NewBet struct {
+// BetInfo represents information about a bet inside the contract.
+type BetInfo struct {
+	State        int
+	Participants []string
+	Moderator    string
+	AmountGWei   *big.Float
+	Expiration   time.Time
+}
+
+// PlaceBet represents the input required to place a bet.
+type PlaceBet struct {
 	AmountGWei    *big.Float
 	FeeAmountGWei *big.Float
 	Expiration    time.Time
@@ -17,7 +26,7 @@ type NewBet struct {
 }
 
 // Validate verifies the new bet value is properly initialized.
-func (nb NewBet) Validate() error {
+func (pb PlaceBet) Validate() error {
 	return nil
 }
 

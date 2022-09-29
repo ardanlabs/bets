@@ -5,8 +5,10 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ardanlabs/bets/business/contract/go/bank"
 	"github.com/ardanlabs/bets/foundation/web"
@@ -18,8 +20,26 @@ import (
 	"go.uber.org/zap"
 )
 
+// These constants define the different bet states.
+const (
+	StateNotExists  = 0
+	StateLive       = 1
+	StateReconciled = 2
+	StateCancelled  = 3
+)
+
+// These constants set a defined gas limit for the different calls.
+const (
+	gasLimitDrain    = 3_000_000
+	gasLimitPlaceBet = 3_000_000
+)
+
 // Sign is used to sign data for the different smart contract calls.
-func Sign(privateKey *ecdsa.PrivateKey, betID string, address common.Address, nonce uint) ([]byte, error) {
+func Sign(privateKey *ecdsa.PrivateKey, betID string, address string, nonce uint) ([]byte, error) {
+	if !common.IsHexAddress(address) {
+		return nil, errors.New("invalid address")
+	}
+
 	String, _ := abi.NewType("string", "", nil)
 	Address, _ := abi.NewType("address", "", nil)
 	Uint, _ := abi.NewType("uint", "", nil)
@@ -36,7 +56,7 @@ func Sign(privateKey *ecdsa.PrivateKey, betID string, address common.Address, no
 		},
 	}
 
-	bytes, err := arguments.Pack(betID, address, big.NewInt(int64(nonce)))
+	bytes, err := arguments.Pack(betID, common.HexToAddress(address), big.NewInt(int64(nonce)))
 	if err != nil {
 		return nil, fmt.Errorf("arguments pack: %w", err)
 	}
@@ -105,7 +125,7 @@ func (b *Bank) Client() *ethereum.Ethereum {
 // Drain will drain the full value of the smart contract and transfer it to
 // the owner address.
 func (b *Bank) Drain(ctx context.Context) (*types.Transaction, *types.Receipt, error) {
-	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
+	tranOpts, err := b.ethereum.NewTransactOpts(ctx, gasLimitDrain, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
 	}
@@ -161,19 +181,49 @@ func (b *Bank) Nonce(ctx context.Context, accountID string) (*big.Int, error) {
 	return nonce, nil
 }
 
+// Nonce will return the current nonce for the specified account.
+func (b *Bank) BetDetails(ctx context.Context, betID string) (BetInfo, error) {
+	tranOpts, err := b.ethereum.NewCallOpts(ctx)
+	if err != nil {
+		return BetInfo{}, fmt.Errorf("new call opts: %w", err)
+	}
+
+	bbi, err := b.contract.BetDetails(tranOpts, betID)
+	if err != nil {
+		return BetInfo{}, fmt.Errorf("account balance: %w", err)
+	}
+
+	participants := make([]string, len(bbi.Participants))
+	for i, participant := range bbi.Participants {
+		participants[i] = participant.Hex()
+	}
+
+	betInfo := BetInfo{
+		State:        int(bbi.State),
+		Participants: participants,
+		Moderator:    bbi.Moderator.Hex(),
+		AmountGWei:   currency.Wei2GWei(bbi.Amount),
+		Expiration:   time.Unix(bbi.Expiration.Int64(), 0),
+	}
+
+	b.log(ctx, "bet details", "betid", betID, "details", betInfo)
+
+	return betInfo, nil
+}
+
 // PlaceBet adds a new bet to the smart contract. This bet will be live if accepted
 // by the smart contract and all participants will be bound to the bet.
-func (b *Bank) PlaceBet(ctx context.Context, betID string, nb NewBet) (*types.Transaction, *types.Receipt, error) {
-	if err := nb.Validate(); err != nil {
+func (b *Bank) PlaceBet(ctx context.Context, betID string, pb PlaceBet) (*types.Transaction, *types.Receipt, error) {
+	if err := pb.Validate(); err != nil {
 		return nil, nil, fmt.Errorf("validate input: %w", err)
 	}
 
 	var participants []common.Address
-	for _, participant := range nb.Participants {
+	for _, participant := range pb.Participants {
 		participants = append(participants, common.HexToAddress(participant))
 	}
 
-	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
+	tranOpts, err := b.ethereum.NewTransactOpts(ctx, gasLimitPlaceBet, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
 	}
@@ -181,13 +231,13 @@ func (b *Bank) PlaceBet(ctx context.Context, betID string, nb NewBet) (*types.Tr
 	tx, err := b.contract.PlaceBet(
 		tranOpts,
 		betID,
-		currency.GWei2Wei(nb.AmountGWei),
-		currency.GWei2Wei(nb.FeeAmountGWei),
-		new(big.Int).SetInt64(nb.Expiration.Unix()),
-		common.HexToAddress(nb.Moderator),
+		currency.GWei2Wei(pb.AmountGWei),
+		currency.GWei2Wei(pb.FeeAmountGWei),
+		new(big.Int).SetInt64(pb.Expiration.Unix()),
+		common.HexToAddress(pb.Moderator),
 		participants,
-		nb.Nonces,
-		nb.Signatures,
+		pb.Nonces,
+		pb.Signatures,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("place bet: %w", err)
@@ -216,7 +266,7 @@ func (b *Bank) ReconcileBet(ctx context.Context, betID string, rb ReconcileBet) 
 		winners = append(winners, common.HexToAddress(winner))
 	}
 
-	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
+	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 1600000, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
 	}
@@ -249,7 +299,7 @@ func (b *Bank) CancelBetModerator(ctx context.Context, betID string, cbm CancelB
 		return nil, nil, fmt.Errorf("validate input: %w", err)
 	}
 
-	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
+	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 1600000, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
 	}
@@ -282,7 +332,7 @@ func (b *Bank) CancelBetParticipants(ctx context.Context, betID string, cbp Canc
 		return nil, nil, fmt.Errorf("validate input: %w", err)
 	}
 
-	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
+	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 1600000, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
 	}
@@ -315,7 +365,7 @@ func (b *Bank) CancelBetOwner(ctx context.Context, betID string, cbo CancelBetOw
 		return nil, nil, fmt.Errorf("validate input: %w", err)
 	}
 
-	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
+	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 1600000, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
 	}
@@ -346,7 +396,7 @@ func (b *Bank) CancelBetOwner(ctx context.Context, betID string, cbo CancelBetOw
 // CancelBetExpired allows any participant to cancel the bet after the bet as
 // expired for 30 days and it isn't reconciled.
 func (b *Bank) CancelBetExpired(ctx context.Context, betID string) (*types.Transaction, *types.Receipt, error) {
-	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
+	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 1600000, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
 	}
@@ -389,7 +439,7 @@ func (b *Bank) Balance(ctx context.Context) (GWei *big.Float, err error) {
 
 // Deposit will add the given amount to the account's contract balance.
 func (b *Bank) Deposit(ctx context.Context, amountGWei *big.Float) (*types.Transaction, *types.Receipt, error) {
-	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, amountGWei)
+	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 1600000, amountGWei)
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
 	}
@@ -412,7 +462,7 @@ func (b *Bank) Deposit(ctx context.Context, amountGWei *big.Float) (*types.Trans
 
 // Withdraw will move all the account's balance in the contract, to the account's wallet.
 func (b *Bank) Withdraw(ctx context.Context) (*types.Transaction, *types.Receipt, error) {
-	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 0, big.NewFloat(0))
+	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 1600000, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
 	}

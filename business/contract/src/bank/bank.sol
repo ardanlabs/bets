@@ -13,14 +13,19 @@ contract Bank {
 
     // =========================================================================
 
-    // Bet represents an individual bet's structure.
+    // BetInfo represents the details about a bet.
+    struct BetInfo {
+        uint8     State;
+        address[] Participants;
+        address   Moderator;
+        uint256   Amount;
+        uint256   Expiration;
+    }
+
+    // Bet is used to manage bet logic.
     struct Bet {
-        uint8                     State;
+        BetInfo                   Info;
         mapping (address => bool) IsParticipant;
-        address[]                 Participants;
-        address                   Moderator;
-        uint256                   Amount;
-        uint256                   Expiration;
     }
 
     // Account represents account information for an account.
@@ -80,6 +85,15 @@ contract Bank {
         return accounts[account].Nonce;
     }
 
+    // BetDetails returns the details about the specified bet.
+    function BetDetails(string memory betID) onlyOwner view public returns (BetInfo memory) {
+        if (bets[betID].Info.State == STATE_NOTEXISTS) {
+            revert("bet id does not exist");
+        }
+
+        return bets[betID].Info;
+    }
+
     // PlaceBet will add a bet to the system that is considered a live bet.
     function PlaceBet(
         string    memory   betID,        // Unique Bet identifier
@@ -93,7 +107,7 @@ contract Bank {
     ) onlyOwner public {
 
         // Check to see if this bet already exists.
-        if (bets[betID].State != STATE_NOTEXISTS) {
+        if (bets[betID].Info.State != STATE_NOTEXISTS) {
             revert("bet id already exists");
         }
 
@@ -132,11 +146,15 @@ contract Bank {
         }
 
         // Construct a bet from the provided details.
-        bets[betID].State = STATE_LIVE;
-        bets[betID].Participants = participants;
-        bets[betID].Moderator = moderator;
-        bets[betID].Expiration = expiration;
-        bets[betID].Amount = (amount - feeAmount);
+        bets[betID].Info = BetInfo(
+            {
+                State: STATE_LIVE,
+                Participants: participants,
+                Moderator: moderator,
+                Expiration: expiration,
+                Amount: (amount - feeAmount)
+            }
+        );
 
         // Move the funds from the participant's balance into the betting pool.
         for (uint i = 0; i < participants.length; i++) {
@@ -170,22 +188,22 @@ contract Bank {
         Bet storage bet = bets[betID];
 
         // Ensure the bet is live.
-        if (bet.State != STATE_LIVE) {
+        if (bet.Info.State != STATE_LIVE) {
             revert("bet is not live");
         }
 
         // Ensure the bet has passed its expiration.
-        if (block.timestamp < bet.Expiration) {
+        if (block.timestamp < bet.Info.Expiration) {
             revert("bet has not yet expired");
         }
 
         // Ensure the nonce used by the moderator is the expected nonce.
-        if (accounts[bet.Moderator].Nonce != nonce) {
+        if (accounts[bet.Info.Moderator].Nonce != nonce) {
             revert("invalid moderator nonce");
         }
 
         // Reconstruct the data that was signed by the moderator.
-        bytes32 hashData = keccak256(abi.encode(betID, bet.Moderator, nonce));
+        bytes32 hashData = keccak256(abi.encode(betID, bet.Info.Moderator, nonce));
 
         // Retrieve the moderator's public address from the signature.
         (address mod, Error.Err memory err) = extractAddress(hashData, signature);
@@ -195,12 +213,12 @@ contract Bank {
 
         // Ensure the moderator on file for the bet is the one that signed to
         // reconcile the bet.
-        if (mod != bet.Moderator) {
+        if (mod != bet.Info.Moderator) {
             revert("invalid moderator signature");
         }
 
         // Ensure the winners provided match the bet's participants.
-        if (bet.Participants.length != winners.length) {
+        if (bet.Info.Participants.length != winners.length) {
             revert("invalid number of winners");
         }
         for (uint i = 0; i < winners.length; i++) {
@@ -211,15 +229,15 @@ contract Bank {
 
         // Give each of the winners the amount listed in the bet.
         for (uint i = 0; i < winners.length; i++) {
-            accounts[winners[i]].Balance += bet.Amount;
+            accounts[winners[i]].Balance += bet.Info.Amount;
         }
 
         // Increment the moderator's nonce.
-        accounts[bet.Moderator].Nonce++;
+        accounts[bet.Info.Moderator].Nonce++;
 
         // Change the state of the bet to reconciled and set the amount to zero.
-        bet.State  = STATE_RECONCILED;
-        bet.Amount = 0;
+        bet.Info.State  = STATE_RECONCILED;
+        bet.Info.Amount = 0;
 
         emit EventLog(string.concat(betID, " has been reconciled")); 
     }
@@ -236,17 +254,17 @@ contract Bank {
         Bet storage bet = bets[betID];
 
         // Ensure the bet is live.
-        if (bet.State != STATE_LIVE) {
+        if (bet.Info.State != STATE_LIVE) {
             revert("bet is not live");
         }
 
         // Ensure the nonce used by the moderator is the expected nonce.
-        if (accounts[bet.Moderator].Nonce != nonce) {
+        if (accounts[bet.Info.Moderator].Nonce != nonce) {
             revert("invalid moderator nonce");
         }
 
         // Reconstruct the data that was signed by the moderator.
-        bytes32 hashData = keccak256(abi.encode(betID, bet.Moderator, nonce));
+        bytes32 hashData = keccak256(abi.encode(betID, bet.Info.Moderator, nonce));
 
         // Retrieve the moderator's public address from the signature.
         (address mod, Error.Err memory err) = extractAddress(hashData, signature);
@@ -256,23 +274,23 @@ contract Bank {
 
         // Ensure the moderator on file for the bet is the one that signed to
         // reconcile the bet.
-        if (mod != bet.Moderator) {
+        if (mod != bet.Info.Moderator) {
             revert("invalid moderator signature");
         }
 
         // Return the money back to the participants minus the fee.
-        uint256 totalAmount = bet.Amount - feeAmount;
-        for (uint i = 0; i < bet.Participants.length; i++) {
-            accounts[bet.Participants[i]].Balance += totalAmount;
+        uint256 totalAmount = bet.Info.Amount - feeAmount;
+        for (uint i = 0; i < bet.Info.Participants.length; i++) {
+            accounts[bet.Info.Participants[i]].Balance += totalAmount;
             accounts[Owner].Balance += feeAmount;
         }
 
         // Increment the moderator's nonce.
-        accounts[bet.Moderator].Nonce++;
+        accounts[bet.Info.Moderator].Nonce++;
 
         // Change the state of the bet to cancelled and set the amount to zero.
-        bet.State  = STATE_CANCELLED;
-        bet.Amount = 0;
+        bet.Info.State  = STATE_CANCELLED;
+        bet.Info.Amount = 0;
 
         emit EventLog(string.concat(betID, " has been cancelled by moderator")); 
     }
@@ -289,18 +307,18 @@ contract Bank {
         Bet storage bet = bets[betID];
 
         // Ensure the bet is live.
-        if (bet.State != STATE_LIVE) {
+        if (bet.Info.State != STATE_LIVE) {
             revert("bet is not live");
         }
 
         // Ensure we have a proper number of signatures and nonces.
-        if ((bet.Participants.length != signatures.length) || (bet.Participants.length != nonces.length)) {
+        if ((bet.Info.Participants.length != signatures.length) || (bet.Info.Participants.length != nonces.length)) {
             revert("invalid number of signatures or nonces");
         }
 
         // Ensure the we have proper signatures from all the participants.
-        for (uint i = 0; i < bet.Participants.length; i++) {
-            address        participant = bet.Participants[i];
+        for (uint i = 0; i < bet.Info.Participants.length; i++) {
+            address        participant = bet.Info.Participants[i];
             uint           nonce       = nonces[i];
             bytes calldata signature   = signatures[i];
 
@@ -328,15 +346,15 @@ contract Bank {
         }
 
         // Return the money back to the participants minus the fee.
-        uint256 totalAmount = bet.Amount - feeAmount;
-        for (uint i = 0; i < bet.Participants.length; i++) {
-            accounts[bet.Participants[i]].Balance += totalAmount;
+        uint256 totalAmount = bet.Info.Amount - feeAmount;
+        for (uint i = 0; i < bet.Info.Participants.length; i++) {
+            accounts[bet.Info.Participants[i]].Balance += totalAmount;
             accounts[Owner].Balance += feeAmount;
         }
 
         // Change the state of the bet to cancelled and set the amount to zero.
-        bet.State  = STATE_CANCELLED;
-        bet.Amount = 0;
+        bet.Info.State  = STATE_CANCELLED;
+        bet.Info.Amount = 0;
 
         emit EventLog(string.concat(betID, " has been cancelled by all participants")); 
     }
@@ -351,20 +369,20 @@ contract Bank {
         Bet storage bet = bets[betID];
 
         // Ensure the bet is live.
-        if (bet.State != STATE_LIVE) {
+        if (bet.Info.State != STATE_LIVE) {
             revert("bet is not live");
         }
 
         // Return the money back to the participants minus the fee.
-        uint256 totalAmount = bet.Amount - feeAmount;
-        for (uint i = 0; i < bet.Participants.length; i++) {
-            accounts[bet.Participants[i]].Balance += totalAmount;
+        uint256 totalAmount = bet.Info.Amount - feeAmount;
+        for (uint i = 0; i < bet.Info.Participants.length; i++) {
+            accounts[bet.Info.Participants[i]].Balance += totalAmount;
             accounts[Owner].Balance += feeAmount;
         }
 
         // Change the state of the bet to cancelled and set the amount to zero.
-        bet.State  = STATE_CANCELLED;
-        bet.Amount = 0;
+        bet.Info.State  = STATE_CANCELLED;
+        bet.Info.Amount = 0;
 
         emit EventLog(string.concat(betID, " has been cancelled by owner")); 
     }
@@ -382,12 +400,12 @@ contract Bank {
         Bet storage bet = bets[betID];
 
         // Ensure the bet is live.
-        if (bet.State != STATE_LIVE) {
+        if (bet.Info.State != STATE_LIVE) {
             revert("bet is not live");
         }
 
         // Ensure the bet has expired.
-        if (block.timestamp < bet.Expiration + 30 days) {
+        if (block.timestamp < bet.Info.Expiration + 30 days) {
             revert("bets may only be canceled 30+ days after expiration");
         }
 
@@ -397,13 +415,13 @@ contract Bank {
         }
 
         // Return the money back to the participants minus the fee.
-        for (uint i = 0; i < bet.Participants.length; i++) {
-            accounts[bet.Participants[i]].Balance += bet.Amount;
+        for (uint i = 0; i < bet.Info.Participants.length; i++) {
+            accounts[bet.Info.Participants[i]].Balance += bet.Info.Amount;
         }
 
         // Change the state of the bet to cancelled and set the amount to zero.
-        bet.State  = STATE_CANCELLED;
-        bet.Amount = 0;
+        bet.Info.State  = STATE_CANCELLED;
+        bet.Info.Amount = 0;
 
         emit EventLog(string.concat(betID, " has been cancelled by ", Error.Addrtoa(msg.sender), " since expired")); 
     }
