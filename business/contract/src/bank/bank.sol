@@ -5,18 +5,32 @@ import "./error.sol";
 
 contract Bank {
 
-    // Bet represents an individual bet's structure.
+    // These constants define the different states a bet can exist in.
+    uint8 private constant STATE_NOTEXISTS  = 0;
+    uint8 private constant STATE_LIVE       = 1;
+    uint8 private constant STATE_RECONCILED = 2;
+    uint8 private constant STATE_CANCELLED  = 3;
+
+    // =========================================================================
+
+    // BetInfo represents the details about a bet.
+    struct BetInfo {
+        uint8     State;
+        address[] Participants;
+        address   Moderator;
+        uint256   Amount;
+        uint256   Expiration;
+    }
+
+    // Bet is used to manage bet logic.
     struct Bet {
-        bool                      Exists;
+        BetInfo                   Info;
         mapping (address => bool) IsParticipant;
-        address[]                 Participants;
-        address                   Moderator;
-        uint256                   Pool;
-        uint256                   Expiration;
     }
 
     // Account represents account information for an account.
     struct Account {
+        bool    Exists;
         uint256 Balance;
         uint    Nonce;
     }
@@ -44,7 +58,7 @@ contract Bank {
     }
 
     // =========================================================================
-    // Owner Only Calls
+    // Owner Called API's
 
     // onlyOwner can be used to restrict access to a function for only the owner.
     modifier onlyOwner {
@@ -61,292 +75,355 @@ contract Bank {
         emit EventLog(string.concat("drain[", Error.Addrtoa(account), "] amount[", Error.Itoa(bal), "]"));
     }
 
-    // PlaceBet will add a bet to the system that is considered a live bet.
-    function PlaceBet(
-        string    memory   betId,        // Unique Bet identifier
-        uint256            amount,       // Amount per participant is betting
-        uint256            feeAmount,    // Amount per participant fee
-        uint256            expiration,   // Time the bet expires
-        address            moderator,    // Address of the moderator
-        address[] memory   participants, // List of participant addresses
-        uint[]    memory   nonce,        // Nonce used per participant for signing
-        bytes[]   calldata signatures    // List of participant signatures
-    ) onlyOwner public {
-
-        // Construct a bet from the provided details.
-        Bet bet = Bet (
-            {
-                Exists:       true,
-                Participants: participants,
-                Moderator:    moderator,
-                Expiration:   expiration,
-                Pool:         (participants.length * amount)
-            }
-        );
-
-        // Validate the signatures, balances, nounces.
-        for (uint i = 0; i < participants.length; i++) {
-
-            // Reconstruct the data that was signed by this participant.
-            bytes32 hashData = keccak256(abi.encode(betId, participants[i], moderator, amount, expiration, nonce[i]));
-
-            // Retrieve the participant's public address from the signature.
-            (address participant, Error.Err memory err) = extractAddress(hashData, signatures[i]);
-            if (err.isError) {
-                revert(err.msg);
-            }
-
-            // Ensure the address retrieved from the signature matches the participant.
-            if (participant != participants[i]) {
-                revert(string.concat("part [", Error.Addrtoa(participants[i]), "] address doesn't match signature"));
-            }
-
-            // Ensure the participant has a sufficient balance for the bet.
-            if (accounts[participant].Balance < amount + feeAmount) {
-                revert(string.concat("part [", Error.Addrtoa(participants[i]), "] has an insufficient balance"));
-            }
-
-            // Ensure the nonce is the expected nonce.
-            if (accounts[participant].Nonce != nonce) {
-                revert(string.concat("part [", Error.Addrtoa(participants[i]), "] invalid nonce [", Error.Itoa(nonce[i]) + "]"));
-            }
-
-            // Store the participant's address in the bet's Participants map.
-            bet.IsParticipant[participant] = true;
-        }
-
-        // Add the bet to the bets maps.
-        bets[betId] = bet;
-
-        // Move the funds from the participant's balance into the betting pool.
-        for (uint i = 0; i < participants.length; i++) {
-            accounts[participants[i]].Balance -= amount + feeAmount;
-            accounts[participants[i]].Nonce++;
-            accounts[Owner].Balance += feeAmount;
-        }
-
-        emit EventLog(string.concat("betId [", betId, "] has been added to the system"));
-    }
-
-    // ReconcileSigned allows a moderator to reconcile a bet.
-    function Reconcile(
-        string    memory   betId,     // Unique Bet identifier
-        uint256            feeAmount, // Amount per participant fee
-        address[] memory   winners,   // List of winner addresses
-        address            moderator, // Address of the moderator 
-        uint               nonce,     // Nonce used by moderator for signing
-        bytes     calldata signature  // Moderator signature
-    ) onlyOwner public {
-
-        // Capture the bet information.
-        Bet bet = bets[betId];
-        if (!bet.Exists) {
-            revert("unknown bet id");
-        }
-
-        // Ensure the pool is large enough for the fee.
-        uint256 totalFee = feeAmount * bet.Participants.length;
-        if (bets[betId].Pool < totalFee) {
-            revert("the total fee is larger than the pool");
-        }
-
-        // Ensure the bet has passed its expiration.
-        if (block.timestamp < bet.Expiration) {
-            revert("bet has not yet expired");
-        }
-
-        // Ensure the bet has not already been reconciled.
-        if (betsMap[betId].Pool == 0) {
-            revert("bet is already reconciled");
-        }
-
-        // Ensure the moderator's nonce is valid.
-        if (validNonce(moderator, nonce)) {
-            revert("moderator nonce is invalid");
-        }
-
-        // Hash the reconciliation information.
-        bytes32 hash = hashReconcile(betId, winners, moderator, nonce);
-
-        // Retrieve the moderator from the signed hash and signature.
-        (address validateModerator, Error.Err memory addrErr) = extractAddress(hash, signature);
-        if (addrErr.isError) {
-            revert(addrErr.msg);
-        }
-
-        // Ensure the moderator on file for the bet is the one that signed to
-        // reconcile the bet.
-        if (moderator != validateModerator) {
-            revert("invalid moderator signature");
-        }
-
-        // Take the fee from the bet pool.
-        Error.Err memory feeErr = takeFee(betId, feeAmount);
-        if (feeErr.isError) {
-            revert(feeErr.msg);
-        }
-
-        // Distribute remaining pool to the winners.
-        distributePool(betId, winners);
-
-        // Increment the moderator's nonce.
-        accounts[moderator].Nonce++;
-    }
-
-    // ModeratorCancel allows the moderator to cancel a bet at any time.
-    function ModeratorCancel(
-        string    memory betId,
-        uint      nonce,
-        bytes     calldata signature,
-        uint256   feeAmount
-    ) onlyOwner public {
-
-        // Take the fee from the bet pool.
-        Error.Err memory feeErr = takeFee(betId, feeAmount);
-        if (feeErr.isError) {
-            revert(feeErr.msg);
-        }
-
-        // Ensure the bet has not already been reconciled.
-        if (betsMap[betId].Pool == 0) {
-            revert("bets may only be canceled if unreconciled");
-        }
-
-        // Retrieve the signer.
-        bytes32 hash = hashCancel(betId, betsMap[betId].Participants, nonce);
-        (address signer, Error.Err memory err) = extractAddress(hash, signature);
-        if (err.isError) {
-            revert(err.msg);
-        }
-
-        // Ensure the signer is the moderator on file for the bet.
-        if (signer != betsMap[betId].Moderator) {
-            revert("signer does not have the authority to cancel the bet");
-        }
-
-        // Validate the moderator's nonce.
-        if (!validNonce(signer, nonce)) {
-            revert("invalid nonce for moderator");
-        }
-
-        // Ensure the participants match the bet's participants.
-        (Error.Err memory partErr) = ensureParticipants(betId, betsMap[betId].Participants);
-        if (partErr.isError) {
-            revert(partErr.msg);
-        }
-
-        // Perform the refund.
-        distributePool(betId, betsMap[betId].Participants);
-
-        // Increment the moderator's nonce.
-        accounts[signer].Nonce++;
-    }
-
-    // ParticipantCancel allows all participants to sign to cancel a bet before
-    // it has expired.
-    function ParticipantCancel(
-        string    memory betId,
-        uint[]    memory nonce,
-        bytes[]   calldata signatures,
-        uint256   feeAmount
-    ) onlyOwner public {
-
-        // Take the fee from the bet pool.
-        Error.Err memory feeErr = takeFee(betId, feeAmount);
-        if (feeErr.isError) {
-            revert(feeErr.msg);
-        }
-
-        // Ensure the bet has not already been reconciled.
-        if (betsMap[betId].Pool == 0) {
-            revert("bets may only be canceled if unreconciled");
-        }
-
-        // Ensure the participants provided match the bet's participants.
-        (Error.Err memory partErr) = ensureParticipants(betId, betsMap[betId].Participants);
-        if (partErr.isError) {
-            revert(partErr.msg);
-        }
-
-        // Ensure all participants have signed to abort the bet.
-        if (betsMap[betId].Participants.length != nonce.length) {
-            revert("all participants must sign to abort");
-        }
-
-        // Ensure all signatories are participants in the bet.
-        for (uint i = 0; i < nonce.length; i++) {
-            bytes32 hash = hashCancel(betId, betsMap[betId].Participants, nonce[i]);
-            (address signer, Error.Err memory err) = extractAddress(hash, signatures[i]);
-            if (err.isError){
-                revert(err.msg);
-            }
-            if (!betsMap[betId].IsParticipant[signer]) {
-                revert("invalid signer");
-            }
-        }
-
-        // Perform the refund.
-        distributePool(betId, betsMap[betId].Participants);
-
-        // Increment nonces for all participants.
-        incrementNonces(betsMap[betId].Participants);
-    }
-
-    // OwnerCancel allows the owner to cancel a bet at any time.
-    function OwnerCancel(string memory betId, uint256 feeAmount) onlyOwner public {
-
-        // Take the fee from the bet pool.
-        Error.Err memory feeErr = takeFee(betId, feeAmount);
-        if (feeErr.isError) {
-            revert(feeErr.msg);
-        }
-
-        // If the pool is zero it's already reconciled or couldn't handle the fee.
-        if (betsMap[betId].Pool == 0) {
-            revert("bet pool empty");
-        }
-
-        // Perform the refund.
-        distributePool(betId, betsMap[betId].Participants);
-    }
-
     // AccountBalance returns the specified account's balance and amount bet.
     function AccountBalance(address account) onlyOwner view public returns (uint) {
         return accounts[account].Balance;
     }
 
-    // GetNonce will retrieve the current nonce for a given account.
-    function GetNonce(address account) onlyOwner view public returns (uint) {
+    // Nonce will retrieve the current nonce for a given account.
+    function Nonce(address account) onlyOwner view public returns (uint) {
         return accounts[account].Nonce;
     }
 
-    // =========================================================================
-    // Account Only Calls
+    // BetDetails returns the details about the specified bet.
+    function BetDetails(string memory betID) onlyOwner view public returns (BetInfo memory) {
+        if (bets[betID].Info.State == STATE_NOTEXISTS) {
+            revert("bet id does not exist");
+        }
 
-    // ExpiredCancel allows individual participants to cancel a bet 30 days
+        return bets[betID].Info;
+    }
+
+    // PlaceBet will add a bet to the system that is considered a live bet.
+    function PlaceBet(
+        string    memory   betID,        // Unique Bet identifier
+        uint256            amount,       // Amount each participant is betting
+        uint256            feeAmount,    // Amount each participant pays in upfront fees
+        uint256            expiration,   // Time the bet expires
+        address            moderator,    // Address of the moderator
+        address[] memory   participants, // List of participant addresses
+        uint[]    memory   nonces,       // Nonce used per participant for signing
+        bytes[]   calldata signatures    // List of participant signatures
+    ) onlyOwner public {
+
+        // Check to see if this bet already exists.
+        if (bets[betID].Info.State != STATE_NOTEXISTS) {
+            revert("bet id already exists");
+        }
+
+        // The total cost to each participant.
+        uint256 totalCost = (amount + feeAmount);
+
+        // Validate the signatures, balances, nounces.
+        for (uint i = 0; i < participants.length; i++) {
+            address        participant = participants[i];
+            uint           nonce       = nonces[i];
+            bytes calldata signature   = signatures[i];
+
+            // Ensure the participant has a sufficient balance for the bet.
+            if (accounts[participant].Balance < totalCost) {
+                revert(string.concat(Error.Addrtoa(participant), " has an insufficient balance"));
+            }
+
+            // Ensure the expected nonce for this participant is provided.
+            if (accounts[participant].Nonce != nonce) {
+                revert(string.concat(Error.Addrtoa(participant), " has an invalid nonce"));
+            }
+
+            // Reconstruct the data should have been signed by this participant.
+            bytes32 hashData = keccak256(abi.encode(betID, participant, nonce));
+
+            // Retrieve the participant's public address from the signature.
+            (address addr, Error.Err memory err) = extractAddress(hashData, signature);
+            if (err.isError) {
+                revert(err.msg);
+            }
+
+            // Ensure the address retrieved from the signature matches the participant.
+            if (addr != participant) {
+                revert(string.concat(Error.Addrtoa(participant), " address doesn't match signature"));
+            }
+        }
+
+        // Construct a bet from the provided details.
+        bets[betID].Info = BetInfo(
+            {
+                State: STATE_LIVE,
+                Participants: participants,
+                Moderator: moderator,
+                Expiration: expiration,
+                Amount: (amount - feeAmount)
+            }
+        );
+
+        // Move the funds from the participant's balance into the betting pool.
+        for (uint i = 0; i < participants.length; i++) {
+            address participant = participants[i];
+
+            accounts[participant].Balance -= totalCost;
+            accounts[participant].Nonce++;
+            accounts[Owner].Balance += feeAmount;
+
+            // Mark this participant as part of this bet.
+            bets[betID].IsParticipant[participant] = true;
+        }
+
+        // Check if we need to add an account for the moderator.
+        if (!accounts[moderator].Exists) {
+            accounts[moderator] = Account(true, 0, 0);
+        }
+
+        emit EventLog(string.concat(betID, " has been added to the system"));
+    }
+
+    // ReconcileBet allows a moderator to reconcile a bet.
+    function ReconcileBet(
+        string    memory   betID,     // Unique Bet identifier
+        uint               nonce,     // Nonce used by moderator for signing
+        bytes     calldata signature, // Moderator signature
+        address[] memory   winners    // List of winner addresses
+    ) onlyOwner public {
+
+        // Capture the bet information.
+        Bet storage bet = bets[betID];
+
+        // Ensure the bet is live.
+        if (bet.Info.State != STATE_LIVE) {
+            revert("bet is not live");
+        }
+
+        // Ensure the bet has passed its expiration.
+        if (block.timestamp < bet.Info.Expiration) {
+            revert("bet has not yet expired");
+        }
+
+        // Ensure the nonce used by the moderator is the expected nonce.
+        if (accounts[bet.Info.Moderator].Nonce != nonce) {
+            revert("invalid moderator nonce");
+        }
+
+        // Reconstruct the data that was signed by the moderator.
+        bytes32 hashData = keccak256(abi.encode(betID, bet.Info.Moderator, nonce));
+
+        // Retrieve the moderator's public address from the signature.
+        (address mod, Error.Err memory err) = extractAddress(hashData, signature);
+        if (err.isError) {
+            revert(err.msg);
+        }
+
+        // Ensure the moderator on file for the bet is the one that signed to
+        // reconcile the bet.
+        if (mod != bet.Info.Moderator) {
+            revert("invalid moderator signature");
+        }
+
+        // Ensure the winners provided match the bet's participants.
+        if (bet.Info.Participants.length != winners.length) {
+            revert("invalid number of winners");
+        }
+        for (uint i = 0; i < winners.length; i++) {
+            if (!bet.IsParticipant[winners[i]]) {
+                revert("invalid winner");
+            }
+        }
+
+        // Give each of the winners the amount listed in the bet.
+        for (uint i = 0; i < winners.length; i++) {
+            accounts[winners[i]].Balance += bet.Info.Amount;
+        }
+
+        // Increment the moderator's nonce.
+        accounts[bet.Info.Moderator].Nonce++;
+
+        // Change the state of the bet to reconciled and set the amount to zero.
+        bet.Info.State  = STATE_RECONCILED;
+        bet.Info.Amount = 0;
+
+        emit EventLog(string.concat(betID, " has been reconciled")); 
+    }
+
+    // CancelBetModerator allows the moderator to cancel a bet at any time.
+    function CancelBetModerator(
+        string    memory betID,
+        uint256   feeAmount,
+        uint      nonce,
+        bytes     calldata signature
+    ) onlyOwner public {
+
+        // Capture the bet information.
+        Bet storage bet = bets[betID];
+
+        // Ensure the bet is live.
+        if (bet.Info.State != STATE_LIVE) {
+            revert("bet is not live");
+        }
+
+        // Ensure the nonce used by the moderator is the expected nonce.
+        if (accounts[bet.Info.Moderator].Nonce != nonce) {
+            revert("invalid moderator nonce");
+        }
+
+        // Reconstruct the data that was signed by the moderator.
+        bytes32 hashData = keccak256(abi.encode(betID, bet.Info.Moderator, nonce));
+
+        // Retrieve the moderator's public address from the signature.
+        (address mod, Error.Err memory err) = extractAddress(hashData, signature);
+        if (err.isError) {
+            revert(err.msg);
+        }
+
+        // Ensure the moderator on file for the bet is the one that signed to
+        // reconcile the bet.
+        if (mod != bet.Info.Moderator) {
+            revert("invalid moderator signature");
+        }
+
+        // Return the money back to the participants minus the fee.
+        uint256 totalAmount = bet.Info.Amount - feeAmount;
+        for (uint i = 0; i < bet.Info.Participants.length; i++) {
+            accounts[bet.Info.Participants[i]].Balance += totalAmount;
+            accounts[Owner].Balance += feeAmount;
+        }
+
+        // Increment the moderator's nonce.
+        accounts[bet.Info.Moderator].Nonce++;
+
+        // Change the state of the bet to cancelled and set the amount to zero.
+        bet.Info.State  = STATE_CANCELLED;
+        bet.Info.Amount = 0;
+
+        emit EventLog(string.concat(betID, " has been cancelled by moderator")); 
+    }
+
+    // CancelBetParticipants allows all the participants to cancel a bet.
+    function CancelBetParticipants(
+        string    memory betID,
+        uint256   feeAmount,
+        uint[]    memory nonces,
+        bytes[]   calldata signatures
+    ) onlyOwner public {
+
+        // Capture the bet information.
+        Bet storage bet = bets[betID];
+
+        // Ensure the bet is live.
+        if (bet.Info.State != STATE_LIVE) {
+            revert("bet is not live");
+        }
+
+        // Ensure we have a proper number of signatures and nonces.
+        if ((bet.Info.Participants.length != signatures.length) || (bet.Info.Participants.length != nonces.length)) {
+            revert("invalid number of signatures or nonces");
+        }
+
+        // Ensure the we have proper signatures from all the participants.
+        for (uint i = 0; i < bet.Info.Participants.length; i++) {
+            address        participant = bet.Info.Participants[i];
+            uint           nonce       = nonces[i];
+            bytes calldata signature   = signatures[i];
+
+            // Ensure the nonce used by the participant is the expected nonce.
+            if (accounts[participant].Nonce != nonce) {
+                revert(string.concat(Error.Addrtoa(participant), "] has an invalid nonce"));
+            }
+
+            // Reconstruct the data that was signed by the participant.
+            bytes32 hashData = keccak256(abi.encode(betID, participant, nonce));
+
+            // Retrieve the participant's public address from the signature.
+            (address addr, Error.Err memory err) = extractAddress(hashData, signature);
+            if (err.isError) {
+                revert(err.msg);
+            }
+
+            // Ensure the participant's signature matches the address of file.
+            if (addr != participant) {
+                revert(string.concat(Error.Addrtoa(participant), " address doesn't match signature"));
+            }
+
+            // Increment the nonce value for this participant.
+            accounts[participant].Nonce++;
+        }
+
+        // Return the money back to the participants minus the fee.
+        uint256 totalAmount = bet.Info.Amount - feeAmount;
+        for (uint i = 0; i < bet.Info.Participants.length; i++) {
+            accounts[bet.Info.Participants[i]].Balance += totalAmount;
+            accounts[Owner].Balance += feeAmount;
+        }
+
+        // Change the state of the bet to cancelled and set the amount to zero.
+        bet.Info.State  = STATE_CANCELLED;
+        bet.Info.Amount = 0;
+
+        emit EventLog(string.concat(betID, " has been cancelled by all participants")); 
+    }
+
+    // CancelBetOwner allows the owner to cancel a bet at any time.
+    function CancelBetOwner(
+        string  memory betID,
+        uint256        feeAmount
+    ) onlyOwner public {
+
+        // Capture the bet information.
+        Bet storage bet = bets[betID];
+
+        // Ensure the bet is live.
+        if (bet.Info.State != STATE_LIVE) {
+            revert("bet is not live");
+        }
+
+        // Return the money back to the participants minus the fee.
+        uint256 totalAmount = bet.Info.Amount - feeAmount;
+        for (uint i = 0; i < bet.Info.Participants.length; i++) {
+            accounts[bet.Info.Participants[i]].Balance += totalAmount;
+            accounts[Owner].Balance += feeAmount;
+        }
+
+        // Change the state of the bet to cancelled and set the amount to zero.
+        bet.Info.State  = STATE_CANCELLED;
+        bet.Info.Amount = 0;
+
+        emit EventLog(string.concat(betID, " has been cancelled by owner")); 
+    }
+
+    // =========================================================================
+    // Account Called API's
+
+    // CancelBetExpired allows an individual participant to cancel a bet 30 days
     // after cancelation.
-    function ExpiredCancel(string memory betId) public {
+    function CancelBetExpired(
+        string memory betID
+    ) public {
+
+        // Capture the bet information.
+        Bet storage bet = bets[betID];
+
+        // Ensure the bet is live.
+        if (bet.Info.State != STATE_LIVE) {
+            revert("bet is not live");
+        }
 
         // Ensure the bet has expired.
-        if (block.timestamp < betsMap[betId].Expiration + 30 days) {
+        if (block.timestamp < bet.Info.Expiration + 30 days) {
             revert("bets may only be canceled 30+ days after expiration");
         }
 
-        // Ensure the bet has not been reconciled.
-        if (betsMap[betId].Pool == 0) {
-            revert("bets may only be canceled if unreconciled");
-        }
-
-        // Get the address of the canceler.
-        address canceler = msg.sender;
-
         // Ensure the canceler is one of the participants.
-        if (!betsMap[betId].IsParticipant[canceler]) {
+        if (!bet.IsParticipant[msg.sender]) {
             revert("canceler is not authorized to cancel this bet");
         }
 
-        // Refund the pool to all participants.
-        distributePool(betId, betsMap[betId].Participants);
+        // Return the money back to the participants minus the fee.
+        for (uint i = 0; i < bet.Info.Participants.length; i++) {
+            accounts[bet.Info.Participants[i]].Balance += bet.Info.Amount;
+        }
+
+        // Change the state of the bet to cancelled and set the amount to zero.
+        bet.Info.State  = STATE_CANCELLED;
+        bet.Info.Amount = 0;
+
+        emit EventLog(string.concat(betID, " has been cancelled by ", Error.Addrtoa(msg.sender), " since expired")); 
     }
 
     // Balance returns the balance of the caller.
@@ -357,6 +434,7 @@ contract Bank {
     // Deposit the given amount to the account balance.
     function Deposit() payable public {
         accounts[msg.sender].Balance += msg.value;
+
         emit EventLog(string.concat("deposit[", Error.Addrtoa(msg.sender), "] balance[", Error.Itoa(accounts[msg.sender].Balance), "]"));
     }
 
@@ -376,61 +454,7 @@ contract Bank {
     }
 
     // =========================================================================
-
-    // ensureParticipants will ensure the provided addresses are a complete
-    // match for a given bet's participants.
-    function ensureParticipants(string memory betId, address[] memory addresses) internal view returns (Error.Err memory) {
-
-        // Ensure the participants provided match the bet's participants.
-        if (betsMap[betId].Participants.length != addresses.length) {
-            return Error.New("invalid participants");
-        }
-        for (uint i = 0; i < addresses.length; i++) {
-            if (!betsMap[betId].IsParticipant[addresses[i]]) {
-                return Error.New("invalid participant");
-            }
-        }
-        return Error.None();
-    }
-
-    // takeFee will take the fee from the bet's pool.
-    function takeFee(string memory betId, uint256 feeAmount) private returns (Error.Err memory) {
-
-        // Ensure the pool is large enough for the fee.
-        if (bets[betId].Pool < feeAmount) {
-            accounts[Owner].Balance += bets[betId].Pool;
-            bets[betId].Pool = 0;
-
-            // Do not continue transaction, nothing left in pool.
-            return Error.New("bet pool too low for fee");
-        }
-
-        // Subtract the fee from the pool.
-        bets[betId].Pool -= feeAmount;
-        accounts[Owner].Balance += feeAmount;
-
-        return Error.None();
-    }
-
-    // distributePool will distribute a bet's pool to the provided participants.
-    function distributePool(string memory betId, address[] memory participants) internal {
-
-        // Distribute the remaining pool to all participants. If this is a
-        // fractional value then it is floored by default. The remainder will
-        // later be added to the Owner account.
-        uint256 amount = betsMap[betId].Pool / participants.length;
-        for (uint i = 0; i < participants.length; i++) {
-            accounts[participants[i]].Balance += amount;
-            betsMap[betId].Pool -= amount;
-            emit EventLog(string.concat("betId[", betId, "] participant[", Error.Addrtoa(participants[i]), "] amount[", Error.Itoa(amount), "]"));
-        }
-
-        // If there is a remainder, add it to the Owner's account.
-        accounts[Owner].Balance += betsMap[betId].Pool;
-
-        // Clear the bet pool.
-        betsMap[betId].Pool = 0;
-    }
+    // Private Functions
 
     // extractAddress expects the raw data that was signed and will apply the Ethereum
     // salt value manually. This hides the underlying implementation of the salt.
