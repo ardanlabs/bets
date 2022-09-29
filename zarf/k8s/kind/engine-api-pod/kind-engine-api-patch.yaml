@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: engine-pod
-  namespace: engine-system
+  name: engine-api-pod
+  namespace: engine-api-system
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: engine
+      app: engine-api
   template:
     metadata:
       labels:
-        app: engine
+        app: engine-api
     spec:
       dnsPolicy: ClusterFirstWithHostNet
       hostNetwork: true

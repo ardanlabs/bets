@@ -1,21 +1,21 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: engine-system
+  name: engine-api-system
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: engine-pod # Base POD name
-  namespace: engine-system
+  name: engine-api-pod # Base POD name
+  namespace: engine-api-system
 spec:
   selector:
     matchLabels:
-      app: engine # Selector for POD name search.
+      app: engine-api # Selector for POD name search.
   template:
     metadata:
       labels:
-        app: engine
+        app: engine-api
     spec:
       terminationGracePeriodSeconds: 60
       containers:
@@ -49,19 +49,19 @@ spec:
           - name: BETS_DB_HOST
             valueFrom:
               configMapKeyRef:
-                name: app-config
+                name: engine-api-config
                 key: db_host
           - name: BETS_GAME_CONTRACT_ID
             valueFrom:
               configMapKeyRef:
-                name: app-config
+                name: engine-api-config
                 key: game_contract_id
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: engine-service
-  namespace: engine-system
+  name: engine-api-service
+  namespace: engine-api-system
 spec:
   selector:
     app: engine

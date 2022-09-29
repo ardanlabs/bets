@@ -27,7 +27,7 @@
 # https://docs.soliditylang.org/en/v0.8.11/installing-solidity.html
 
 dev.setup.mac:
-#	brew update
+	brew update
 	brew list ethereum || brew install ethereum
 	brew list solidity || brew install solidity
 	brew list kind || brew install kind
@@ -81,29 +81,33 @@ kind-load:
 kind-apply:
 	kustomize build zarf/k8s/kind/database-pod | kubectl apply -f -
 	kubectl wait --namespace=database-system --timeout=120s --for=condition=Available deployment/database-pod
-	#kustomize build zarf/k8s/kind/geth-pod | kubectl apply -f -
-	kustomize build zarf/k8s/kind/engine-pod | kubectl apply -f -
+	kustomize build zarf/k8s/kind/geth-pod | kubectl apply -f -
+	kubectl wait --namespace=geth-system --timeout=120s --for=condition=Available deployment/geth-pod
+	kustomize build zarf/k8s/kind/engine-api-pod | kubectl apply -f -
 
 kind-restart:
-	kubectl rollout restart deployment engine-pod --namespace=engine-system
+	kubectl rollout restart deployment engine-api-pod --namespace=engine-api-system
 
 kind-update: all kind-load kind-restart
 
 kind-update-apply: all kind-load kind-apply
 
-kind-logs:
-	kubectl logs -l app=engine --all-containers=true -f --tail=100 --namespace=engine-system
+kind-logs-engine-api:
+	kubectl logs -l app=engine-api --all-containers=true -f --tail=100 --namespace=engine-api-system
+
+kind-logs-geth:
+	kubectl logs -l app=geth --all-containers=true -f --tail=100 --namespace=geth-system
 
 kind-status:
 	kubectl get nodes -o wide --all-namespaces
 	kubectl get svc -o wide --all-namespaces
 	kubectl get pods -o wide --watch --all-namespaces
 
-kind-status-engine:
-	kubectl get pods -o wide --watch --namespace=engine-system
+kind-status-engine-api:
+	kubectl get pods -o wide --watch --namespace=engine-api-system
 
-kind-describe:
-	kubectl describe pod -l app=engine --namespace=engine-system
+kind-describe-engine-api:
+	kubectl describe pod -l app=engine-api --namespace=engine-api-system
 
 # ==============================================================================
 # Administration
@@ -115,10 +119,7 @@ seed: migrate
 	go run app/tooling/db/main.go seed
 
 # ==============================================================================
-# Game Engine and UI
-
-game-up:
-	go run app/services/engine/main.go | go run app/tooling/logfmt/main.go
+# Game Engine UI
 
 react-install:
 	yarn --cwd app/services/game/ install
@@ -144,30 +145,19 @@ contract-deploy: contract-build admin-build
 	./admin -d
 
 # ==============================================================================
-# These commands start the Ethereum node and provide examples of attaching
-# directly with potential commands to try, and creating a new account if necessary.
-
-# This is start Ethereum in developer mode. Only when a transaction is pending will
-# Ethereum mine a block. It provides a minimal environment for development.
-geth-up:
-	geth --dev --ipcpath zarf/ethereum/geth.ipc --http.corsdomain '*' --http --allow-insecure-unlock --rpc.allow-unprotected-txs --http.vhosts=* --mine --miner.threads 1 --verbosity 5 --datadir "zarf/ethereum/" --unlock 0x6327A38415C53FFb36c11db55Ea74cc9cB4976Fd --password zarf/ethereum/password
-
-# This will signal Ethereum to shutdown.
-geth-down:
-	kill -INT $(shell ps | grep "geth " | grep -v grep | sed -n 1,1p | cut -c1-5)
-
-# This will remove the local blockchain and let you start new.
-geth-reset:
-	rm -rf zarf/ethereum/geth/
+# These are Ethereum commands for attaching, creating a new account and depositing
+# and other examples.
 
 # This is a JS console environment for making geth related API calls.
 geth-attach:
-	geth attach --datadir zarf/ethereum/
+	$(eval $@_GETH_POD := $(shell kubectl get --namespace=geth-system pod -l app=geth -o jsonpath="{.items[0].metadata.name}"))
+	kubectl exec -it --namespace=geth-system $($@_GETH_POD) -- geth attach --datadir /ethereum
 
 # This will add a new account to the keystore. The account will have a zero
 # balance until you give it some money.
 geth-new-account:
-	geth --datadir zarf/ethereum/ account new
+	$(eval $@_GETH_POD := $(shell kubectl get --namespace=geth-system pod -l app=geth -o jsonpath="{.items[0].metadata.name}"))
+	kubectl exec -it --namespace=geth-system $($@_GETH_POD) -- geth account new --datadir /ethereum
 
 # This will deposit 1 ETH into the two extra accounts from the coinbase account.
 # Do this if you delete the geth folder and start over or if the accounts need money.
@@ -175,17 +165,9 @@ geth-deposit:
 	curl -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"eth_sendTransaction", "params": [{"from":"0x6327A38415C53FFb36c11db55Ea74cc9cB4976Fd", "to":"0x8E113078ADF6888B7ba84967F299F29AeCe24c55", "value":"0x1000000000000000000"}], "id":1}' localhost:8545
 	curl -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"eth_sendTransaction", "params": [{"from":"0x6327A38415C53FFb36c11db55Ea74cc9cB4976Fd", "to":"0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7", "value":"0x1000000000000000000"}], "id":1}' localhost:8545
 
-docker-geth-up:
-	docker run -it --name geth -p 8545:8545 -p 30303:30303 -v $(shell pwd)/zarf/ethereum:/root/.ethereum ethereum/client-go --dev --ipcpath /root/.ethereum/geth.ipc --http --http.addr 0.0.0.0 --http.corsdomain '*' --allow-insecure-unlock --rpc.allow-unprotected-txs --http.vhosts '*' --mine --miner.threads 1 --verbosity 5 --datadir "/root/.ethereum" --unlock 0x6327A38415C53FFb36c11db55Ea74cc9cB4976Fd --password /root/.ethereum/password
-
-docker-geth-down:
-	docker rm $(shell docker ps -a -q --filter "name=geth")
-
-docker-geth-attach:
-	docker exec -it geth geth attach --datadir /root/.ethereum
-
-docker-geth-new-account:
-	docker exec -it geth geth account new --datadir /root/.ethereum
+# This will remove the local blockchain and let you start new.
+geth-reset:
+	rm -rf zarf/ethereum/geth/
 
 # ==============================================================================
 # Running tests within the local computer

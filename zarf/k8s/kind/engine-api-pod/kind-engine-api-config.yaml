@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: app-config
-  namespace: engine-system
+  name: engine-api-config
+  namespace: engine-api-system
 data:
   # This is the default but I want to show an example.
   db_host: localhost
