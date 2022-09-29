@@ -75,8 +75,8 @@ contract Bank {
         return accounts[account].Balance;
     }
 
-    // GetNonce will retrieve the current nonce for a given account.
-    function GetNonce(address account) onlyOwner view public returns (uint) {
+    // Nonce will retrieve the current nonce for a given account.
+    function Nonce(address account) onlyOwner view public returns (uint) {
         return accounts[account].Nonce;
     }
 
