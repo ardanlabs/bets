@@ -6,18 +6,17 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ardanlabs/bets/business/core/bet"
-	"github.com/jmoiron/sqlx"
-
 	"github.com/ardanlabs/bets/app/services/engine/handlers/v1/brunogrp"
 	"github.com/ardanlabs/bets/app/services/engine/handlers/v1/gamegrp"
-	"github.com/ardanlabs/bets/business/core/bank"
+	"github.com/ardanlabs/bets/business/core/bet"
+	"github.com/ardanlabs/bets/business/core/book"
 	"github.com/ardanlabs/bets/business/web/auth"
 	"github.com/ardanlabs/bets/business/web/v1/mid"
 	"github.com/ardanlabs/bets/foundation/events"
 	"github.com/ardanlabs/bets/foundation/web"
 	"github.com/ardanlabs/ethereum/currency"
 	"github.com/gorilla/websocket"
+	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 )
 
@@ -27,7 +26,7 @@ type Config struct {
 	Auth           *auth.Auth
 	DB             *sqlx.DB
 	Converter      *currency.Converter
-	Bank           *bank.Bank
+	Book           *book.Book
 	Evts           *events.Events
 	AnteUSD        float64
 	BankTimeout    time.Duration
@@ -41,7 +40,7 @@ func Routes(app *web.App, cfg Config) {
 	// Register group endpoints.
 	ggh := gamegrp.Handlers{
 		Converter:      cfg.Converter,
-		Bank:           cfg.Bank,
+		Book:           cfg.Book,
 		Bet:            bet.NewCore(cfg.Log, cfg.DB),
 		Log:            cfg.Log,
 		Evts:           cfg.Evts,

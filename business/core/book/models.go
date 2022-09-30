@@ -1,4 +1,4 @@
-package bank
+package book
 
 import (
 	"math/big"

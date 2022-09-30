@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/ardanlabs/bets/app/tooling/crypto/commands"
-	"github.com/ardanlabs/bets/business/core/bank"
+	"github.com/ardanlabs/bets/business/core/book"
 	"github.com/ardanlabs/ethereum/currency"
 )
 
@@ -70,7 +70,7 @@ func run() error {
 	// =========================================================================
 	// Construct the bank API.
 
-	bank, err := bank.New(ctx, nil, args.Network, keyFile, args.PassPhrase, args.ContractID)
+	book, err := book.New(ctx, nil, args.Network, keyFile, args.PassPhrase, args.ContractID)
 	if err != nil {
 		return err
 	}
@@ -85,27 +85,27 @@ func run() error {
 	fmt.Println("passphrase      :", args.PassPhrase)
 	fmt.Println("oneETHToUSD     :", oneETHToUSD)
 	fmt.Println("oneUSDToETH     :", oneUSDToETH)
-	fmt.Println("key address     :", bank.Client().Address())
+	fmt.Println("key address     :", book.Client().Address())
 	fmt.Println("contract id     :", args.ContractID)
 
 	if _, exists := flags["a"]; exists {
-		return commands.Deposit(ctx, converter, bank, args.Money)
+		return commands.Deposit(ctx, converter, book, args.Money)
 	}
 	if _, exists := flags["r"]; exists {
-		return commands.Withdraw(ctx, converter, bank)
+		return commands.Withdraw(ctx, converter, book)
 	}
 	if _, exists := flags["b"]; exists {
-		return commands.Balance(ctx, converter, bank, args.Address)
+		return commands.Balance(ctx, converter, book, args.Address)
 	}
 
 	if _, exists := flags["w"]; exists {
-		return commands.Wallet(ctx, converter, bank.Client(), args.Address)
+		return commands.Wallet(ctx, converter, book.Client(), args.Address)
 	}
 	if _, exists := flags["d"]; exists {
-		return commands.Deploy(ctx, converter, bank.Client())
+		return commands.Deploy(ctx, converter, book.Client())
 	}
 	if _, exists := flags["t"]; exists {
-		return commands.Transaction(ctx, converter, bank.Client(), args.TranID)
+		return commands.Transaction(ctx, converter, book.Client(), args.TranID)
 	}
 
 	return errors.New("no functional command provided")

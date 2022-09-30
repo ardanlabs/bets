@@ -11,7 +11,7 @@ import (
 
 	"github.com/ardanlabs/bets/app/services/engine/handlers/debug/checkgrp"
 	v1 "github.com/ardanlabs/bets/app/services/engine/handlers/v1"
-	"github.com/ardanlabs/bets/business/core/bank"
+	"github.com/ardanlabs/bets/business/core/book"
 	"github.com/ardanlabs/bets/business/web/auth"
 	"github.com/ardanlabs/bets/business/web/v1/mid"
 	"github.com/ardanlabs/bets/foundation/events"
@@ -39,7 +39,7 @@ type APIMuxConfig struct {
 	Log            *zap.SugaredLogger
 	Auth           *auth.Auth
 	Converter      *currency.Converter
-	Bank           *bank.Bank
+	Book           *book.Book
 	Evts           *events.Events
 	AnteUSD        float64
 	BankTimeout    time.Duration
@@ -91,7 +91,7 @@ func APIMux(cfg APIMuxConfig, options ...func(opts *Options)) http.Handler {
 		Log:            cfg.Log,
 		Auth:           cfg.Auth,
 		Converter:      cfg.Converter,
-		Bank:           cfg.Bank,
+		Book:           cfg.Book,
 		Evts:           cfg.Evts,
 		AnteUSD:        cfg.AnteUSD,
 		BankTimeout:    cfg.BankTimeout,

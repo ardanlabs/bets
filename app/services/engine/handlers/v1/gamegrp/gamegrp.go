@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ardanlabs/bets/business/core/bank"
 	"github.com/ardanlabs/bets/business/core/bet"
+	"github.com/ardanlabs/bets/business/core/book"
 	"github.com/ardanlabs/bets/business/web/auth"
 	v1Web "github.com/ardanlabs/bets/business/web/v1"
 	"github.com/ardanlabs/bets/foundation/events"
@@ -29,7 +29,7 @@ import (
 type Handlers struct {
 	Bet            bet.Core
 	Converter      *currency.Converter
-	Bank           *bank.Bank
+	Book           *book.Book
 	Log            *zap.SugaredLogger
 	WS             websocket.Upgrader
 	Evts           *events.Events
@@ -155,9 +155,9 @@ func (h *Handlers) Configuration(ctx context.Context, w http.ResponseWriter, r *
 		ChainID    int    `json:"chainId"`
 		ContractID string `json:"contractId"`
 	}{
-		Network:    h.Bank.Client().Network(),
-		ChainID:    h.Bank.Client().ChainID(),
-		ContractID: h.Bank.ContractID(),
+		Network:    h.Book.Client().Network(),
+		ChainID:    h.Book.Client().ChainID(),
+		ContractID: h.Book.ContractID(),
 	}
 
 	return web.Respond(ctx, w, info, http.StatusOK)

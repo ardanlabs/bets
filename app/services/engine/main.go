@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/ardanlabs/bets/app/services/engine/handlers"
-	"github.com/ardanlabs/bets/business/core/bank"
+	"github.com/ardanlabs/bets/business/core/book"
 	"github.com/ardanlabs/bets/business/sys/database"
 	"github.com/ardanlabs/bets/business/web/auth"
 	"github.com/ardanlabs/bets/foundation/events"
@@ -190,7 +190,7 @@ func run(log *zap.SugaredLogger) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	bank, err := bank.New(ctx, log, cfg.Bank.Network, cfg.Bank.KeyPath, cfg.Bank.PassPhrase, cfg.Game.ContractID)
+	book, err := book.New(ctx, log, cfg.Bank.Network, cfg.Bank.KeyPath, cfg.Bank.PassPhrase, cfg.Game.ContractID)
 	if err != nil {
 		return fmt.Errorf("connecting to bank: %w", err)
 	}
@@ -230,7 +230,7 @@ func run(log *zap.SugaredLogger) error {
 		Log:            log,
 		Auth:           auth,
 		Converter:      converter,
-		Bank:           bank,
+		Book:           book,
 		Evts:           evts,
 		BankTimeout:    cfg.Bank.Timeout,
 		ConnectTimeout: cfg.Game.ConnectTimeout,

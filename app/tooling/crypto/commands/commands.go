@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
-	scbank "github.com/ardanlabs/bets/business/contract/go/bank"
-	"github.com/ardanlabs/bets/business/core/bank"
+	scbook "github.com/ardanlabs/bets/business/contract/go/book"
+	"github.com/ardanlabs/bets/business/core/book"
 	"github.com/ardanlabs/ethereum"
 	"github.com/ardanlabs/ethereum/currency"
 	"github.com/ethereum/go-ethereum/common"
@@ -16,14 +16,14 @@ import (
 )
 
 // Deposit will move money from the wallet into the game contract.
-func Deposit(ctx context.Context, converter *currency.Converter, bank *bank.Bank, amountUSD float64) error {
+func Deposit(ctx context.Context, converter *currency.Converter, book *book.Book, amountUSD float64) error {
 	fmt.Println("\nDeposit Details")
 	fmt.Println("----------------------------------------------------")
-	fmt.Println("address         :", bank.Client().Address())
+	fmt.Println("address         :", book.Client().Address())
 	fmt.Println("amount          :", amountUSD)
 
 	amountGWei := converter.USD2GWei(big.NewFloat(amountUSD))
-	tx, receipt, err := bank.Deposit(ctx, amountGWei)
+	tx, receipt, err := book.Deposit(ctx, amountGWei)
 	if err != nil {
 		return err
 	}
@@ -35,12 +35,12 @@ func Deposit(ctx context.Context, converter *currency.Converter, bank *bank.Bank
 }
 
 // Withdraw will remove money from the game contract back into the wallet.
-func Withdraw(ctx context.Context, converter *currency.Converter, bank *bank.Bank) error {
+func Withdraw(ctx context.Context, converter *currency.Converter, book *book.Book) error {
 	fmt.Println("\nWithdraw Details")
 	fmt.Println("----------------------------------------------------")
-	fmt.Println("address         :", bank.Client().Address())
+	fmt.Println("address         :", book.Client().Address())
 
-	tx, receipt, err := bank.Withdraw(ctx)
+	tx, receipt, err := book.Withdraw(ctx)
 	if err != nil {
 		return err
 	}
@@ -52,12 +52,12 @@ func Withdraw(ctx context.Context, converter *currency.Converter, bank *bank.Ban
 }
 
 // Balance returns the current balance of the specified address.
-func Balance(ctx context.Context, converter *currency.Converter, bank *bank.Bank, address string) error {
+func Balance(ctx context.Context, converter *currency.Converter, book *book.Book, address string) error {
 	fmt.Println("\nGame Balance")
 	fmt.Println("----------------------------------------------------")
 	fmt.Println("account         :", address)
 
-	balance, err := bank.AccountBalance(ctx, address)
+	balance, err := book.AccountBalance(ctx, address)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func Deploy(ctx context.Context, converter *currency.Converter, ethereum *ethere
 
 	// =========================================================================
 
-	address, tx, _, err := scbank.DeployBank(tranOpts, ethereum.RawClient())
+	address, tx, _, err := scbook.DeployBook(tranOpts, ethereum.RawClient())
 	if err != nil {
 		return err
 	}
