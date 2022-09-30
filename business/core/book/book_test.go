@@ -36,16 +36,14 @@ const (
 // These variables provide some static GWei to play with.
 var (
 	oneUSD    = big.NewFloat(662_833.00)
-	tenUSD    = big.NewFloat(6_622_833.00)
-	twentyUSD = big.NewFloat(13_256_660.00)
+	tenUSD    = big.NewFloat(0).Mul(oneUSD, big.NewFloat(10))
+	twentyUSD = big.NewFloat(0).Mul(oneUSD, big.NewFloat(20))
+	fiftyUSD  = big.NewFloat(0).Mul(oneUSD, big.NewFloat(50))
 )
 
 func TestMain(m *testing.M) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	converter := currency.NewDefaultConverter()
-	deposit := converter.USD2Wei(big.NewFloat(1000))
 
 	ethereum, err := ethereum.New(ctx, ethereum.NetworkHTTPLocalhost, OwnerKeyPath, OwnerPassPhrase)
 	if err != nil {
@@ -56,7 +54,7 @@ func TestMain(m *testing.M) {
 	fmt.Println("Adding money to player 1 account")
 
 	// Add money to this account.
-	if err := ethereum.SendTransaction(ctx, Player1Address, deposit, 21000); err != nil {
+	if err := ethereum.SendTransaction(ctx, Player1Address, currency.GWei2Wei(fiftyUSD), 21000); err != nil {
 		fmt.Println("Player1Address:", err)
 		os.Exit(1)
 	}
@@ -64,7 +62,7 @@ func TestMain(m *testing.M) {
 	fmt.Println("Adding money to player 2 account")
 
 	// Add money to this account.
-	if err := ethereum.SendTransaction(ctx, Player2Address, deposit, 21000); err != nil {
+	if err := ethereum.SendTransaction(ctx, Player2Address, currency.GWei2Wei(fiftyUSD), 21000); err != nil {
 		fmt.Println("Player2Address:", err)
 		os.Exit(1)
 	}
@@ -97,8 +95,7 @@ func Test_DepositWithdraw(t *testing.T) {
 	}
 
 	// Perform a deposit from the player's wallet.
-	depositGWeiAmount := twentyUSD
-	depositTx, depositReceipt, err := playerClient.Deposit(ctx, depositGWeiAmount)
+	depositTx, depositReceipt, err := playerClient.Deposit(ctx, twentyUSD)
 	if err != nil {
 		t.Fatalf("error making deposit: %s", err)
 	}
@@ -106,7 +103,7 @@ func Test_DepositWithdraw(t *testing.T) {
 	// Calculate the expected balance by subtracting the amount deposited and the
 	// gas fees for the transaction.
 	gasCost := big.NewInt(0).Mul(depositTx.GasPrice(), big.NewInt(0).SetUint64(depositReceipt.GasUsed))
-	depositWeiAmount := currency.GWei2Wei(depositGWeiAmount)
+	depositWeiAmount := currency.GWei2Wei(twentyUSD)
 	expectedBalance := big.NewInt(0).Sub(startingBalance, depositWeiAmount)
 	expectedBalance.Sub(expectedBalance, gasCost)
 
@@ -182,7 +179,7 @@ func Test_PlaceBet(t *testing.T) {
 	converter := currency.NewDefaultConverter()
 
 	// =========================================================================
-	// Give player accounts money
+	// Establish books for each of the entities involved
 
 	// Connect player 1 to the smart contract.
 	player1Client, err := book.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player1KeyPath, Player1PassPhrase, contractID)
@@ -190,30 +187,10 @@ func Test_PlaceBet(t *testing.T) {
 		t.Fatalf("error creating new book for player 1: %s", err)
 	}
 
-	// Deposit ~$20 USD into the player's account.
-	if _, _, err := player1Client.Deposit(ctx, twentyUSD); err != nil {
-		t.Fatalf("error making deposit player 1: %s", err)
-	}
-
-	// Capture player 1 balance in the smart contract.
-	gotBal, err := player1Client.Balance(ctx)
-	if err != nil {
-		t.Fatalf("error getting balance for player1: %s", err)
-	}
-
-	if gotBal.Cmp(twentyUSD) != 0 {
-		t.Fatalf("wrong player1 balance, got %v  exp %v", gotBal, twentyUSD)
-	}
-
 	// Connect player 2 to the smart contract.
 	player2Client, err := book.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player2KeyPath, Player2PassPhrase, contractID)
 	if err != nil {
 		t.Fatalf("error creating new book for player 1: %s", err)
-	}
-
-	// Deposit ~$20 USD into the player's account.
-	if _, _, err := player2Client.Deposit(ctx, twentyUSD); err != nil {
-		t.Fatalf("error making deposit player 1: %s", err)
 	}
 
 	// Connect owner to the smart contract.
@@ -223,12 +200,25 @@ func Test_PlaceBet(t *testing.T) {
 	}
 
 	// =========================================================================
+	// Give player accounts money
+
+	// Deposit ~$20 USD into the player's account.
+	if _, _, err := player2Client.Deposit(ctx, twentyUSD); err != nil {
+		t.Fatalf("error making deposit player 1: %s", err)
+	}
+
+	// Deposit ~$20 USD into the player's account.
+	if _, _, err := player1Client.Deposit(ctx, twentyUSD); err != nil {
+		t.Fatalf("error making deposit player 1: %s", err)
+	}
+
+	// =========================================================================
 	// Place a bet
 
 	// We need a string for the bet id.
 	betID := "1234"
 
-	// Create the slice of signatures for the two participants.
+	// Create the slice of signatures for the two players.
 	signatures := make([][]byte, 2)
 	privateKey, err := ethereum.PrivateKeyByKeyFile(Player1KeyPath, Player1PassPhrase)
 	if err != nil {
@@ -276,35 +266,29 @@ func Test_PlaceBet(t *testing.T) {
 	expPlayerBal := big.NewFloat(0).Sub(twentyUSD, big.NewFloat(0).Add(pb.AmountBetGWei, pb.AmountFeeGWei))
 	expOwnerBal := big.NewFloat(0).Mul(pb.AmountFeeGWei, big.NewFloat(2))
 
-	// Capture player 1 balance in the smart contract.
-	gotBal, err = player1Client.Balance(ctx)
+	// Capture and check player 1 balance in the smart contract.
+	gotBal, err := player1Client.Balance(ctx)
 	if err != nil {
 		t.Fatalf("error getting balance for player1: %s", err)
 	}
-
-	// Player1 balance should match amount minus the fee.
 	if gotBal.Cmp(expPlayerBal) != 0 {
-		t.Fatalf("wrong player1 balance, got %v  exp %v", gotBal, expPlayerBal)
+		t.Fatalf("wrong player 1 balance, got %v  exp %v", gotBal, expPlayerBal)
 	}
 
-	// Capture player 2 balance in the smart contract.
+	// Capture and check player 2 balance in the smart contract.
 	gotBal, err = player2Client.Balance(ctx)
 	if err != nil {
 		t.Fatalf("error getting balance for player2: %s", err)
 	}
-
-	// Player2 balance should match amount minus the fee.
 	if gotBal.Cmp(expPlayerBal) != 0 {
-		t.Fatalf("wrong player2 balance, got %v  exp %v", gotBal, expPlayerBal)
+		t.Fatalf("wrong player 2 balance, got %v  exp %v", gotBal, expPlayerBal)
 	}
 
-	// Capture owner balance in the smart contract.
+	// Capture and check owner balance in the smart contract.
 	gotBal, err = ownerClient.Balance(ctx)
 	if err != nil {
 		t.Fatalf("error getting balance for owner: %s", err)
 	}
-
-	// The owner should have received the fee for each participant.
 	if gotBal.Cmp(expOwnerBal) != 0 {
 		t.Fatalf("wrong owner balance, got %v  exp %v", gotBal, expOwnerBal)
 	}
@@ -343,9 +327,6 @@ func Test_PlaceBet(t *testing.T) {
 	if betInfo.Expiration.UTC() != expiration {
 		t.Errorf("wrong expiration, got %v  exp %v", betInfo.Expiration.UTC(), expiration)
 	}
-
-	// =========================================================================
-	// Check Ethereum wallet balances
 }
 
 /*
