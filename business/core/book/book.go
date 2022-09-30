@@ -1,5 +1,5 @@
-// Package bank represents all the transactions necessary for the game.
-package bank
+// Package book represents all the transactions necessary for the game.
+package book
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ardanlabs/bets/business/contract/go/bank"
+	"github.com/ardanlabs/bets/business/contract/go/book"
 	"github.com/ardanlabs/bets/foundation/web"
 	"github.com/ardanlabs/ethereum"
 	"github.com/ardanlabs/ethereum/currency"
@@ -76,28 +76,28 @@ func Sign(privateKey *ecdsa.PrivateKey, betID string, address string, nonce uint
 
 // =============================================================================
 
-// Bank represents a bank that allows for the reconciling of a game and
+// Book represents a bank that allows for the reconciling of a game and
 // information about account balances.
-type Bank struct {
+type Book struct {
 	logger     *zap.SugaredLogger
 	contractID string
 	ethereum   *ethereum.Ethereum
-	contract   *bank.Bank
+	contract   *book.Book
 }
 
 // New returns a new bank with the ability to manage the game money.
-func New(ctx context.Context, logger *zap.SugaredLogger, network string, keyPath string, passPhrase string, contractID string) (*Bank, error) {
+func New(ctx context.Context, logger *zap.SugaredLogger, network string, keyPath string, passPhrase string, contractID string) (*Book, error) {
 	ethereum, err := ethereum.New(ctx, network, keyPath, passPhrase)
 	if err != nil {
 		return nil, fmt.Errorf("network connect: %w", err)
 	}
 
-	contract, err := bank.NewBank(common.HexToAddress(contractID), ethereum.RawClient())
+	contract, err := book.NewBook(common.HexToAddress(contractID), ethereum.RawClient())
 	if err != nil {
 		return nil, fmt.Errorf("new contract: %w", err)
 	}
 
-	b := Bank{
+	b := Book{
 		logger:     logger,
 		contractID: contractID,
 		ethereum:   ethereum,
@@ -110,12 +110,12 @@ func New(ctx context.Context, logger *zap.SugaredLogger, network string, keyPath
 }
 
 // ContractID returns contract id in use.
-func (b *Bank) ContractID() string {
+func (b *Book) ContractID() string {
 	return b.contractID
 }
 
 // Client returns the underlying contract client.
-func (b *Bank) Client() *ethereum.Ethereum {
+func (b *Book) Client() *ethereum.Ethereum {
 	return b.ethereum
 }
 
@@ -124,7 +124,7 @@ func (b *Bank) Client() *ethereum.Ethereum {
 
 // Drain will drain the full value of the smart contract and transfer it to
 // the owner address.
-func (b *Bank) Drain(ctx context.Context) (*types.Transaction, *types.Receipt, error) {
+func (b *Book) Drain(ctx context.Context) (*types.Transaction, *types.Receipt, error) {
 	tranOpts, err := b.ethereum.NewTransactOpts(ctx, gasLimitDrain, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
@@ -148,7 +148,7 @@ func (b *Bank) Drain(ctx context.Context) (*types.Transaction, *types.Receipt, e
 
 // AccountBalance will return the balance for the specified account. Only the
 // owner of the smart contract can make this call.
-func (b *Bank) AccountBalance(ctx context.Context, accountID string) (BalanceGWei *big.Float, err error) {
+func (b *Book) AccountBalance(ctx context.Context, accountID string) (BalanceGWei *big.Float, err error) {
 	tranOpts, err := b.ethereum.NewCallOpts(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("new call opts: %w", err)
@@ -165,7 +165,7 @@ func (b *Bank) AccountBalance(ctx context.Context, accountID string) (BalanceGWe
 }
 
 // Nonce will return the current nonce for the specified account.
-func (b *Bank) Nonce(ctx context.Context, accountID string) (*big.Int, error) {
+func (b *Book) Nonce(ctx context.Context, accountID string) (*big.Int, error) {
 	tranOpts, err := b.ethereum.NewCallOpts(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("new call opts: %w", err)
@@ -182,7 +182,7 @@ func (b *Bank) Nonce(ctx context.Context, accountID string) (*big.Int, error) {
 }
 
 // Nonce will return the current nonce for the specified account.
-func (b *Bank) BetDetails(ctx context.Context, betID string) (BetInfo, error) {
+func (b *Book) BetDetails(ctx context.Context, betID string) (BetInfo, error) {
 	tranOpts, err := b.ethereum.NewCallOpts(ctx)
 	if err != nil {
 		return BetInfo{}, fmt.Errorf("new call opts: %w", err)
@@ -213,7 +213,7 @@ func (b *Bank) BetDetails(ctx context.Context, betID string) (BetInfo, error) {
 
 // PlaceBet adds a new bet to the smart contract. This bet will be live if accepted
 // by the smart contract and all participants will be bound to the bet.
-func (b *Bank) PlaceBet(ctx context.Context, betID string, pb PlaceBet) (*types.Transaction, *types.Receipt, error) {
+func (b *Book) PlaceBet(ctx context.Context, betID string, pb PlaceBet) (*types.Transaction, *types.Receipt, error) {
 	if err := pb.Validate(); err != nil {
 		return nil, nil, fmt.Errorf("validate input: %w", err)
 	}
@@ -256,7 +256,7 @@ func (b *Bank) PlaceBet(ctx context.Context, betID string, pb PlaceBet) (*types.
 
 // ReconcileBet allows the moderator to sign off on the live bet and provide
 // the winning accounts.
-func (b *Bank) ReconcileBet(ctx context.Context, betID string, rb ReconcileBet) (*types.Transaction, *types.Receipt, error) {
+func (b *Book) ReconcileBet(ctx context.Context, betID string, rb ReconcileBet) (*types.Transaction, *types.Receipt, error) {
 	if err := rb.Validate(); err != nil {
 		return nil, nil, fmt.Errorf("validate input: %w", err)
 	}
@@ -294,7 +294,7 @@ func (b *Bank) ReconcileBet(ctx context.Context, betID string, rb ReconcileBet) 
 }
 
 // CancelBetModerator allows the moderator to sign off on cancelling the bet.
-func (b *Bank) CancelBetModerator(ctx context.Context, betID string, cbm CancelBetModerator) (*types.Transaction, *types.Receipt, error) {
+func (b *Book) CancelBetModerator(ctx context.Context, betID string, cbm CancelBetModerator) (*types.Transaction, *types.Receipt, error) {
 	if err := cbm.Validate(); err != nil {
 		return nil, nil, fmt.Errorf("validate input: %w", err)
 	}
@@ -327,7 +327,7 @@ func (b *Bank) CancelBetModerator(ctx context.Context, betID string, cbm CancelB
 }
 
 // CancelBetParticipants allows the participants to sign off on cancelling the bet.
-func (b *Bank) CancelBetParticipants(ctx context.Context, betID string, cbp CancelBetParticipants) (*types.Transaction, *types.Receipt, error) {
+func (b *Book) CancelBetParticipants(ctx context.Context, betID string, cbp CancelBetParticipants) (*types.Transaction, *types.Receipt, error) {
 	if err := cbp.Validate(); err != nil {
 		return nil, nil, fmt.Errorf("validate input: %w", err)
 	}
@@ -360,7 +360,7 @@ func (b *Bank) CancelBetParticipants(ctx context.Context, betID string, cbp Canc
 }
 
 // CancelBetOwner allows the owner to sign off on cancelling the bet.
-func (b *Bank) CancelBetOwner(ctx context.Context, betID string, cbo CancelBetOwner) (*types.Transaction, *types.Receipt, error) {
+func (b *Book) CancelBetOwner(ctx context.Context, betID string, cbo CancelBetOwner) (*types.Transaction, *types.Receipt, error) {
 	if err := cbo.Validate(); err != nil {
 		return nil, nil, fmt.Errorf("validate input: %w", err)
 	}
@@ -395,7 +395,7 @@ func (b *Bank) CancelBetOwner(ctx context.Context, betID string, cbo CancelBetOw
 
 // CancelBetExpired allows any participant to cancel the bet after the bet as
 // expired for 30 days and it isn't reconciled.
-func (b *Bank) CancelBetExpired(ctx context.Context, betID string) (*types.Transaction, *types.Receipt, error) {
+func (b *Book) CancelBetExpired(ctx context.Context, betID string) (*types.Transaction, *types.Receipt, error) {
 	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 1600000, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
@@ -421,7 +421,7 @@ func (b *Bank) CancelBetExpired(ctx context.Context, betID string) (*types.Trans
 }
 
 // Balance will return the balance for the connected account.
-func (b *Bank) Balance(ctx context.Context) (GWei *big.Float, err error) {
+func (b *Book) Balance(ctx context.Context) (GWei *big.Float, err error) {
 	tranOpts, err := b.ethereum.NewCallOpts(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("new call opts: %w", err)
@@ -438,7 +438,7 @@ func (b *Bank) Balance(ctx context.Context) (GWei *big.Float, err error) {
 }
 
 // Deposit will add the given amount to the account's contract balance.
-func (b *Bank) Deposit(ctx context.Context, amountGWei *big.Float) (*types.Transaction, *types.Receipt, error) {
+func (b *Book) Deposit(ctx context.Context, amountGWei *big.Float) (*types.Transaction, *types.Receipt, error) {
 	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 1600000, amountGWei)
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
@@ -461,7 +461,7 @@ func (b *Bank) Deposit(ctx context.Context, amountGWei *big.Float) (*types.Trans
 }
 
 // Withdraw will move all the account's balance in the contract, to the account's wallet.
-func (b *Bank) Withdraw(ctx context.Context) (*types.Transaction, *types.Receipt, error) {
+func (b *Book) Withdraw(ctx context.Context) (*types.Transaction, *types.Receipt, error) {
 	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 1600000, big.NewFloat(0))
 	if err != nil {
 		return nil, nil, fmt.Errorf("new trans opts: %w", err)
@@ -483,8 +483,8 @@ func (b *Bank) Withdraw(ctx context.Context) (*types.Transaction, *types.Receipt
 	return tx, receipt, nil
 }
 
-// EthereumBalance returns the current balance for the account connecting this bank.
-func (b *Bank) EthereumBalance(ctx context.Context) (wei *big.Int, err error) {
+// EthereumBalance returns the current balance for the account connecting this book.
+func (b *Book) EthereumBalance(ctx context.Context) (wei *big.Int, err error) {
 	balance, err := b.ethereum.Balance(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("current balance: %w", err)
@@ -496,7 +496,7 @@ func (b *Bank) EthereumBalance(ctx context.Context) (wei *big.Int, err error) {
 // =============================================================================
 
 // log will write to the configured log if a traceid exists in the context.
-func (b *Bank) log(ctx context.Context, msg string, keysAndvalues ...interface{}) {
+func (b *Book) log(ctx context.Context, msg string, keysAndvalues ...interface{}) {
 	if b.logger == nil {
 		return
 	}

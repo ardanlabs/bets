@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./error.sol";
 
-contract Bank {
+contract Book {
 
     // These constants define the different states a bet can exist in.
     uint8 private constant STATE_NOTEXISTS  = 0;

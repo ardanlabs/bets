@@ -133,9 +133,9 @@ game-gui: react-install
 # This will compile the smart contract and produce the binary code. Then with the
 # abi and binary code, a Go source code file can be generated for Go API access.
 contract-build:
-	solc --abi business/contract/src/bank/bank.sol -o business/contract/abi/bank --overwrite
-	solc --bin business/contract/src/bank/bank.sol -o business/contract/abi/bank --overwrite
-	abigen --bin=business/contract/abi/bank/Bank.bin --abi=business/contract/abi/bank/Bank.abi --pkg=bank --out=business/contract/go/bank/bank.go
+	solc --abi business/contract/src/book/book.sol -o business/contract/abi/book --overwrite
+	solc --bin business/contract/src/book/book.sol -o business/contract/abi/book --overwrite
+	abigen --bin=business/contract/abi/book/book.bin --abi=business/contract/abi/book/book.abi --pkg=book --out=business/contract/go/book/book.go
 
 # This will deploy the smart contract to the locally running Ethereum environment.
 admin-build:

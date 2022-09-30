@@ -1,4 +1,4 @@
-package bank_test
+package book_test
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	scbank "github.com/ardanlabs/bets/business/contract/go/bank"
-	"github.com/ardanlabs/bets/business/core/bank"
+	scbook "github.com/ardanlabs/bets/business/contract/go/book"
+	"github.com/ardanlabs/bets/business/core/book"
 	"github.com/ardanlabs/ethereum"
 	"github.com/ardanlabs/ethereum/currency"
 )
@@ -78,9 +78,9 @@ func Test_DepositWithdraw(t *testing.T) {
 	converter := currency.NewDefaultConverter()
 
 	// Connect player 1 to the smart contract.
-	playerClient, err := bank.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player1KeyPath, Player1PassPhrase, contractID)
+	playerClient, err := book.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player1KeyPath, Player1PassPhrase, contractID)
 	if err != nil {
-		t.Fatalf("error creating new bank for owner: %s", err)
+		t.Fatalf("error creating new book for owner: %s", err)
 	}
 
 	// =========================================================================
@@ -154,9 +154,9 @@ func Test_WithdrawWithoutBalance(t *testing.T) {
 	defer cancel()
 
 	// Connect player 1 to the smart contract.
-	playerClient, err := bank.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player1KeyPath, Player1PassPhrase, contractID)
+	playerClient, err := book.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player1KeyPath, Player1PassPhrase, contractID)
 	if err != nil {
-		t.Fatalf("error creating new bank for owner: %s", err)
+		t.Fatalf("error creating new book for owner: %s", err)
 	}
 
 	// Perform a withdraw to the player's wallet.
@@ -181,9 +181,9 @@ func Test_PlaceBet(t *testing.T) {
 	// Give player accounts money
 
 	// Connect player 1 to the smart contract.
-	player1Client, err := bank.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player1KeyPath, Player1PassPhrase, contractID)
+	player1Client, err := book.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player1KeyPath, Player1PassPhrase, contractID)
 	if err != nil {
-		t.Fatalf("error creating new bank for player 1: %s", err)
+		t.Fatalf("error creating new book for player 1: %s", err)
 	}
 
 	// Deposit ~$20 USD into the player's account.
@@ -193,9 +193,9 @@ func Test_PlaceBet(t *testing.T) {
 	}
 
 	// Connect player 2 to the smart contract.
-	player2Client, err := bank.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player2KeyPath, Player2PassPhrase, contractID)
+	player2Client, err := book.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player2KeyPath, Player2PassPhrase, contractID)
 	if err != nil {
-		t.Fatalf("error creating new bank for player 1: %s", err)
+		t.Fatalf("error creating new book for player 1: %s", err)
 	}
 
 	// Deposit ~$20 USD into the player's account.
@@ -205,9 +205,9 @@ func Test_PlaceBet(t *testing.T) {
 	}
 
 	// Connect owner to the smart contract.
-	ownerClient, err := bank.New(ctx, nil, ethereum.NetworkHTTPLocalhost, OwnerKeyPath, OwnerPassPhrase, contractID)
+	ownerClient, err := book.New(ctx, nil, ethereum.NetworkHTTPLocalhost, OwnerKeyPath, OwnerPassPhrase, contractID)
 	if err != nil {
-		t.Fatalf("error creating new bank for owner: %s", err)
+		t.Fatalf("error creating new book for owner: %s", err)
 	}
 
 	// =========================================================================
@@ -222,7 +222,7 @@ func Test_PlaceBet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("extract private key 1: %s", err)
 	}
-	signatures[0], err = bank.Sign(privateKey, betID, Player1Address, 0)
+	signatures[0], err = book.Sign(privateKey, betID, Player1Address, 0)
 	if err != nil {
 		t.Fatalf("signing 1: %s", err)
 	}
@@ -230,7 +230,7 @@ func Test_PlaceBet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("extract private key 2: %s", err)
 	}
-	signatures[1], err = bank.Sign(privateKey, betID, Player2Address, 0)
+	signatures[1], err = book.Sign(privateKey, betID, Player2Address, 0)
 	if err != nil {
 		t.Fatalf("signing 2: %s", err)
 	}
@@ -241,7 +241,7 @@ func Test_PlaceBet(t *testing.T) {
 	feeAmountGWei := converter.USD2GWei(big.NewFloat(1))
 
 	// Construct a PlaceBet to make the PlaceBet call.
-	pb := bank.PlaceBet{
+	pb := book.PlaceBet{
 		AmountGWei:    amountGWei,
 		FeeAmountGWei: feeAmountGWei,
 		Expiration:    expiration,
@@ -310,8 +310,8 @@ func Test_PlaceBet(t *testing.T) {
 		t.Fatalf("error getting bet details: %s", err)
 	}
 
-	if betInfo.State != bank.StateLive {
-		t.Errorf("invalid bet state, got %d  exp %d", betInfo.State, bank.StateLive)
+	if betInfo.State != book.StateLive {
+		t.Errorf("invalid bet state, got %d  exp %d", betInfo.State, book.StateLive)
 	}
 
 	if len(betInfo.Participants) != 2 {
@@ -355,21 +355,21 @@ func Test_Reconcile(t *testing.T) {
 	converter := currency.NewDefaultConverter()
 
 	// Connect owner to the smart contract.
-	ownerClient, err := bank.New(ctx, nil, ethereum.NetworkHTTPLocalhost, OwnerKeyPath, OwnerPassPhrase, contractID)
+	ownerClient, err := book.New(ctx, nil, ethereum.NetworkHTTPLocalhost, OwnerKeyPath, OwnerPassPhrase, contractID)
 	if err != nil {
-		t.Fatalf("error creating new bank for owner: %s", err)
+		t.Fatalf("error creating new book for owner: %s", err)
 	}
 
 	// Connect player 1 to the smart contract.
-	player1Client, err := bank.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player1KeyPath, Player1PassPhrase, contractID)
+	player1Client, err := book.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player1KeyPath, Player1PassPhrase, contractID)
 	if err != nil {
-		t.Fatalf("error creating new bank for player 1: %s", err)
+		t.Fatalf("error creating new book for player 1: %s", err)
 	}
 
 	// Connect player 2 to the smart contract.
-	player2Client, err := bank.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player2KeyPath, Player2PassPhrase, contractID)
+	player2Client, err := book.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player2KeyPath, Player2PassPhrase, contractID)
 	if err != nil {
-		t.Fatalf("error creating new bank for player 2: %s", err)
+		t.Fatalf("error creating new book for player 2: %s", err)
 	}
 
 	// Deposit ~$10 USD into the players account.
@@ -467,7 +467,7 @@ func smartContract(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	address, tx, _, err := scbank.DeployBank(tranOpts, ethereum.RawClient())
+	address, tx, _, err := scbook.DeployBook(tranOpts, ethereum.RawClient())
 	if err != nil {
 		return "", err
 	}
