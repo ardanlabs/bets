@@ -3,6 +3,11 @@ pragma solidity ^0.8.0;
 
 import "./error.sol";
 
+/*
+    - Don't accept a place bet with the date already expired
+    - Validate the fee is not greater than the bet amount
+*/
+
 contract Book {
 
     // These constants define the different states a bet can exist in.
@@ -18,7 +23,7 @@ contract Book {
         uint8     State;
         address[] Participants;
         address   Moderator;
-        uint256   AmountWei;
+        uint256   AmountBetWei;
         uint256   Expiration;
     }
 
@@ -152,7 +157,7 @@ contract Book {
                 Participants: participants,
                 Moderator:    moderator,
                 Expiration:   expiration,
-                AmountWei:    amountBetWei
+                AmountBetWei: amountBetWei
             }
         );
 
@@ -217,27 +222,28 @@ contract Book {
             revert("invalid moderator signature");
         }
 
-        // Ensure the winners provided match the bet's participants.
-        if (bet.Info.Participants.length != winners.length) {
-            revert("invalid number of winners");
-        }
+        // Ensure each of the winners exist in the participation list.
         for (uint i = 0; i < winners.length; i++) {
             if (!bet.IsParticipant[winners[i]]) {
-                revert("invalid winner");
+                revert("winner address is not a participant");
             }
         }
 
+        // Calculate the total winnings for each winner.
+        uint256 totalWinnings   = bet.Info.AmountBetWei * 2;
+        uint256 amountPerWinner = totalWinnings / winners.length;
+
         // Give each of the winners the amount listed in the bet.
         for (uint i = 0; i < winners.length; i++) {
-            accounts[winners[i]].Balance += bet.Info.AmountWei;
+            accounts[winners[i]].Balance += amountPerWinner;
         }
 
         // Increment the moderator's nonce.
         accounts[bet.Info.Moderator].Nonce++;
 
         // Change the state of the bet to reconciled and set the amount to zero.
-        bet.Info.State     = STATE_RECONCILED;
-        bet.Info.AmountWei = 0;
+        bet.Info.State        = STATE_RECONCILED;
+        bet.Info.AmountBetWei = 0;
 
         emit EventLog(string.concat(betID, " has been reconciled")); 
     }
@@ -279,7 +285,7 @@ contract Book {
         }
 
         // Return the money back to the participants minus the fee.
-        uint256 totalAmount = bet.Info.AmountWei - feeWei;
+        uint256 totalAmount = bet.Info.AmountBetWei - feeWei;
         for (uint i = 0; i < bet.Info.Participants.length; i++) {
             accounts[bet.Info.Participants[i]].Balance += totalAmount;
             accounts[Owner].Balance += feeWei;
@@ -289,8 +295,8 @@ contract Book {
         accounts[bet.Info.Moderator].Nonce++;
 
         // Change the state of the bet to cancelled and set the amount to zero.
-        bet.Info.State     = STATE_CANCELLED;
-        bet.Info.AmountWei = 0;
+        bet.Info.State        = STATE_CANCELLED;
+        bet.Info.AmountBetWei = 0;
 
         emit EventLog(string.concat(betID, " has been cancelled by moderator")); 
     }
@@ -346,15 +352,15 @@ contract Book {
         }
 
         // Return the money back to the participants minus the fee.
-        uint256 totalAmount = bet.Info.AmountWei - feeWei;
+        uint256 totalAmount = bet.Info.AmountBetWei - feeWei;
         for (uint i = 0; i < bet.Info.Participants.length; i++) {
             accounts[bet.Info.Participants[i]].Balance += totalAmount;
             accounts[Owner].Balance += feeWei;
         }
 
         // Change the state of the bet to cancelled and set the amount to zero.
-        bet.Info.State     = STATE_CANCELLED;
-        bet.Info.AmountWei = 0;
+        bet.Info.State        = STATE_CANCELLED;
+        bet.Info.AmountBetWei = 0;
 
         emit EventLog(string.concat(betID, " has been cancelled by all participants")); 
     }
@@ -374,15 +380,15 @@ contract Book {
         }
 
         // Return the money back to the participants minus the fee.
-        uint256 totalAmount = bet.Info.AmountWei - feeWei;
+        uint256 totalAmount = bet.Info.AmountBetWei - feeWei;
         for (uint i = 0; i < bet.Info.Participants.length; i++) {
             accounts[bet.Info.Participants[i]].Balance += totalAmount;
             accounts[Owner].Balance += feeWei;
         }
 
         // Change the state of the bet to cancelled and set the amount to zero.
-        bet.Info.State     = STATE_CANCELLED;
-        bet.Info.AmountWei = 0;
+        bet.Info.State        = STATE_CANCELLED;
+        bet.Info.AmountBetWei = 0;
 
         emit EventLog(string.concat(betID, " has been cancelled by owner")); 
     }
@@ -416,12 +422,12 @@ contract Book {
 
         // Return the money back to the participants minus the fee.
         for (uint i = 0; i < bet.Info.Participants.length; i++) {
-            accounts[bet.Info.Participants[i]].Balance += bet.Info.AmountWei;
+            accounts[bet.Info.Participants[i]].Balance += bet.Info.AmountBetWei;
         }
 
         // Change the state of the bet to cancelled and set the amount to zero.
-        bet.Info.State     = STATE_CANCELLED;
-        bet.Info.AmountWei = 0;
+        bet.Info.State        = STATE_CANCELLED;
+        bet.Info.AmountBetWei = 0;
 
         emit EventLog(string.concat(betID, " has been cancelled by ", Error.Addrtoa(msg.sender), " since expired")); 
     }

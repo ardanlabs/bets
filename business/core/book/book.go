@@ -199,11 +199,11 @@ func (b *Book) BetDetails(ctx context.Context, betID string) (BetInfo, error) {
 	}
 
 	betInfo := BetInfo{
-		State:        int(bbi.State),
-		Participants: participants,
-		Moderator:    bbi.Moderator.Hex(),
-		AmountGWei:   currency.Wei2GWei(bbi.AmountWei),
-		Expiration:   time.Unix(bbi.Expiration.Int64(), 0),
+		State:         int(bbi.State),
+		Participants:  participants,
+		Moderator:     bbi.Moderator.Hex(),
+		AmountBetGWei: currency.Wei2GWei(bbi.AmountBetWei),
+		Expiration:    time.Unix(bbi.Expiration.Int64(), 0),
 	}
 
 	b.log(ctx, "bet details", "betid", betID, "details", betInfo)

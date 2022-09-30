@@ -7,11 +7,11 @@ import (
 
 // BetInfo represents information about a bet inside the contract.
 type BetInfo struct {
-	State        int
-	Participants []string
-	Moderator    string
-	AmountGWei   *big.Float
-	Expiration   time.Time
+	State         int
+	Participants  []string
+	Moderator     string
+	AmountBetGWei *big.Float
+	Expiration    time.Time
 }
 
 // PlaceBet represents the input required to place a bet.
