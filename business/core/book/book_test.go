@@ -216,16 +216,6 @@ func Test_PlaceBet(t *testing.T) {
 		t.Fatalf("error making deposit player 1: %s", err)
 	}
 
-	// Capture player 2 balance in the smart contract.
-	gotBal, err = player2Client.Balance(ctx)
-	if err != nil {
-		t.Fatalf("error getting balance for player1: %s", err)
-	}
-
-	if gotBal.Cmp(twentyUSD) != 0 {
-		t.Fatalf("wrong player1 balance, got %v  exp %v", gotBal, twentyUSD)
-	}
-
 	// Connect owner to the smart contract.
 	ownerClient, err := book.New(ctx, nil, ethereum.NetworkHTTPLocalhost, OwnerKeyPath, OwnerPassPhrase, contractID)
 	if err != nil {
