@@ -16,8 +16,8 @@ type BetInfo struct {
 
 // PlaceBet represents the input required to place a bet.
 type PlaceBet struct {
-	AmountGWei    *big.Float
-	FeeAmountGWei *big.Float
+	AmountBetGWei *big.Float
+	AmountFeeGWei *big.Float
 	Expiration    time.Time
 	Moderator     string
 	Participants  []string

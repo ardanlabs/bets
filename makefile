@@ -148,6 +148,19 @@ contract-deploy: contract-build admin-build
 # These are Ethereum commands for attaching, creating a new account and depositing
 # and other examples.
 
+# This is start Ethereum in developer mode. Only when a transaction is pending will
+# Ethereum mine a block. It provides a minimal environment for development.
+geth-up:
+	geth --dev --ipcpath zarf/ethereum/geth.ipc --http.corsdomain '*' --http --allow-insecure-unlock --rpc.allow-unprotected-txs --http.vhosts=* --mine --miner.threads 1 --verbosity 5 --datadir "zarf/ethereum/" --unlock 0x6327A38415C53FFb36c11db55Ea74cc9cB4976Fd --password zarf/ethereum/password
+
+# This will signal Ethereum to shutdown.
+geth-down:
+	kill -INT $(shell ps | grep "geth " | grep -v grep | sed -n 1,1p | cut -c1-5)
+
+# This will remove the local blockchain and let you start new.
+geth-reset:
+	rm -rf zarf/ethereum/geth/
+
 # This is a JS console environment for making geth related API calls.
 geth-attach:
 	$(eval $@_GETH_POD := $(shell kubectl get --namespace=geth-system pod -l app=geth -o jsonpath="{.items[0].metadata.name}"))
@@ -164,10 +177,6 @@ geth-new-account:
 geth-deposit:
 	curl -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"eth_sendTransaction", "params": [{"from":"0x6327A38415C53FFb36c11db55Ea74cc9cB4976Fd", "to":"0x8E113078ADF6888B7ba84967F299F29AeCe24c55", "value":"0x1000000000000000000"}], "id":1}' localhost:8545
 	curl -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"eth_sendTransaction", "params": [{"from":"0x6327A38415C53FFb36c11db55Ea74cc9cB4976Fd", "to":"0x0070742FF6003c3E809E78D524F0Fe5dcc5BA7F7", "value":"0x1000000000000000000"}], "id":1}' localhost:8545
-
-# This will remove the local blockchain and let you start new.
-geth-reset:
-	rm -rf zarf/ethereum/geth/
 
 # ==============================================================================
 # Running tests within the local computer

@@ -231,8 +231,8 @@ func (b *Book) PlaceBet(ctx context.Context, betID string, pb PlaceBet) (*types.
 	tx, err := b.contract.PlaceBet(
 		tranOpts,
 		betID,
-		currency.GWei2Wei(pb.AmountGWei),
-		currency.GWei2Wei(pb.FeeAmountGWei),
+		currency.GWei2Wei(pb.AmountBetGWei),
+		currency.GWei2Wei(pb.AmountFeeGWei),
 		new(big.Int).SetInt64(pb.Expiration.Unix()),
 		common.HexToAddress(pb.Moderator),
 		participants,

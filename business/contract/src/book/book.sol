@@ -97,8 +97,8 @@ contract Book {
     // PlaceBet will add a bet to the system that is considered a live bet.
     function PlaceBet(
         string    memory   betID,        // Unique Bet identifier
-        uint256            amountWei,    // Amount each participant is betting
-        uint256            feeWei,       // Amount each participant pays in upfront fees
+        uint256            amountBetWei, // Amount each participant is betting
+        uint256            amountFeeWei, // Amount each participant is paying in fees
         uint256            expiration,   // Time the bet expires
         address            moderator,    // Address of the moderator
         address[] memory   participants, // List of participant addresses
@@ -111,8 +111,8 @@ contract Book {
             revert("bet id already exists");
         }
 
-        // The total cost to each participant.
-        uint256 totalCost = (amountWei + feeWei);
+        // Calculate the total cost to each participant.
+        uint256 totalCostWei = amountBetWei + amountFeeWei;
 
         // Validate the signatures, balances, nounces.
         for (uint i = 0; i < participants.length; i++) {
@@ -121,7 +121,7 @@ contract Book {
             bytes calldata signature   = signatures[i];
 
             // Ensure the participant has a sufficient balance for the bet.
-            if (accounts[participant].Balance < totalCost) {
+            if (accounts[participant].Balance < totalCostWei) {
                 revert(string.concat(Error.Addrtoa(participant), " has an insufficient balance"));
             }
 
@@ -152,7 +152,7 @@ contract Book {
                 Participants: participants,
                 Moderator:    moderator,
                 Expiration:   expiration,
-                AmountWei:    (amountWei - feeWei)
+                AmountWei:    amountBetWei
             }
         );
 
@@ -160,13 +160,13 @@ contract Book {
         for (uint i = 0; i < participants.length; i++) {
             address participant = participants[i];
 
-            accounts[participant].Balance -= totalCost;
+            accounts[participant].Balance -= totalCostWei;
             accounts[participant].Nonce++;
-            accounts[Owner].Balance += feeWei;
+            accounts[Owner].Balance += amountFeeWei;
 
             // Mark this participant as part of this bet.
             bets[betID].IsParticipant[participant] = true;
-        }
+        }        
 
         // Check if we need to add an account for the moderator.
         if (!accounts[moderator].Exists) {
