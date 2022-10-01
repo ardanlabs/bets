@@ -45,7 +45,7 @@ func (rb ReconcileBet) Validate() error {
 
 // CancelBetModerator represents the input required to cancel a bet by the moderator.
 type CancelBetModerator struct {
-	FeeAmountGWei *big.Float
+	AmountFeeGWei *big.Float
 	Nonce         *big.Int
 	Moderator     string
 	Signature     []byte
@@ -58,7 +58,7 @@ func (cbm CancelBetModerator) Validate() error {
 
 // CancelBetParticipants represents the input required to cancel a bet by the participants.
 type CancelBetParticipants struct {
-	FeeAmountGWei *big.Float
+	AmountFeeGWei *big.Float
 	Nonces        []*big.Int
 	Signatures    [][]byte
 }
@@ -70,7 +70,7 @@ func (cbp CancelBetParticipants) Validate() error {
 
 // CancelBetOwner represents the input required to cancel a bet by the contract owner.
 type CancelBetOwner struct {
-	FeeAmountGWei *big.Float
+	AmountFeeGWei *big.Float
 }
 
 // Validate verifies the reconcile bet value is properly initialized.

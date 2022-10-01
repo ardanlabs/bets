@@ -251,7 +251,7 @@ contract Book {
     // CancelBetModerator allows the moderator to cancel a bet at any time.
     function CancelBetModerator(
         string  memory   betID,
-        uint256          feeWei,
+        uint256          amountFeeWei,
         uint             nonce,
         bytes   calldata signature
     ) onlyOwner public {
@@ -285,10 +285,10 @@ contract Book {
         }
 
         // Return the money back to the participants minus the fee.
-        uint256 totalAmount = bet.Info.AmountBetWei - feeWei;
+        uint256 totalAmount = bet.Info.AmountBetWei - amountFeeWei;
         for (uint i = 0; i < bet.Info.Participants.length; i++) {
             accounts[bet.Info.Participants[i]].Balance += totalAmount;
-            accounts[Owner].Balance += feeWei;
+            accounts[Owner].Balance += amountFeeWei;
         }
 
         // Increment the moderator's nonce.
@@ -304,7 +304,7 @@ contract Book {
     // CancelBetParticipants allows all the participants to cancel a bet.
     function CancelBetParticipants(
         string  memory   betID,
-        uint256          feeWei,
+        uint256          amountFeeWei,
         uint[]  memory   nonces,
         bytes[] calldata signatures
     ) onlyOwner public {
@@ -352,10 +352,10 @@ contract Book {
         }
 
         // Return the money back to the participants minus the fee.
-        uint256 totalAmount = bet.Info.AmountBetWei - feeWei;
+        uint256 totalAmount = bet.Info.AmountBetWei - amountFeeWei;
         for (uint i = 0; i < bet.Info.Participants.length; i++) {
             accounts[bet.Info.Participants[i]].Balance += totalAmount;
-            accounts[Owner].Balance += feeWei;
+            accounts[Owner].Balance += amountFeeWei;
         }
 
         // Change the state of the bet to cancelled and set the amount to zero.
@@ -368,7 +368,7 @@ contract Book {
     // CancelBetOwner allows the owner to cancel a bet at any time.
     function CancelBetOwner(
         string  memory betID,
-        uint256        feeWei
+        uint256        amountFeeWei
     ) onlyOwner public {
 
         // Capture the bet information.
@@ -380,10 +380,10 @@ contract Book {
         }
 
         // Return the money back to the participants minus the fee.
-        uint256 totalAmount = bet.Info.AmountBetWei - feeWei;
+        uint256 totalAmount = bet.Info.AmountBetWei - amountFeeWei;
         for (uint i = 0; i < bet.Info.Participants.length; i++) {
             accounts[bet.Info.Participants[i]].Balance += totalAmount;
-            accounts[Owner].Balance += feeWei;
+            accounts[Owner].Balance += amountFeeWei;
         }
 
         // Change the state of the bet to cancelled and set the amount to zero.

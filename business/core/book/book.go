@@ -3,9 +3,7 @@ package book
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -33,46 +31,6 @@ const (
 	gasLimitDrain    = 3_000_000
 	gasLimitPlaceBet = 3_000_000
 )
-
-// Sign is used to sign data for the different smart contract calls.
-func Sign(privateKey *ecdsa.PrivateKey, betID string, address string, nonce uint) ([]byte, error) {
-	if !common.IsHexAddress(address) {
-		return nil, errors.New("invalid address")
-	}
-
-	String, _ := abi.NewType("string", "", nil)
-	Address, _ := abi.NewType("address", "", nil)
-	Uint, _ := abi.NewType("uint", "", nil)
-
-	arguments := abi.Arguments{
-		{
-			Type: String,
-		},
-		{
-			Type: Address,
-		},
-		{
-			Type: Uint,
-		},
-	}
-
-	bytes, err := arguments.Pack(betID, common.HexToAddress(address), big.NewInt(int64(nonce)))
-	if err != nil {
-		return nil, fmt.Errorf("arguments pack: %w", err)
-	}
-
-	signature, err := ethereum.SignBytes(bytes, privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("signing message: %w", err)
-	}
-
-	sig, err := hex.DecodeString(signature[2:])
-	if err != nil {
-		return nil, fmt.Errorf("decoding signature string: %w", err)
-	}
-
-	return sig, nil
-}
 
 // =============================================================================
 
@@ -307,7 +265,7 @@ func (b *Book) CancelBetModerator(ctx context.Context, betID string, cbm CancelB
 	tx, err := b.contract.CancelBetModerator(
 		tranOpts,
 		betID,
-		currency.GWei2Wei(cbm.FeeAmountGWei),
+		currency.GWei2Wei(cbm.AmountFeeGWei),
 		cbm.Nonce,
 		cbm.Signature,
 	)
@@ -340,7 +298,7 @@ func (b *Book) CancelBetParticipants(ctx context.Context, betID string, cbp Canc
 	tx, err := b.contract.CancelBetParticipants(
 		tranOpts,
 		betID,
-		currency.GWei2Wei(cbp.FeeAmountGWei),
+		currency.GWei2Wei(cbp.AmountFeeGWei),
 		cbp.Nonces,
 		cbp.Signatures,
 	)
@@ -373,7 +331,7 @@ func (b *Book) CancelBetOwner(ctx context.Context, betID string, cbo CancelBetOw
 	tx, err := b.contract.CancelBetOwner(
 		tranOpts,
 		betID,
-		currency.GWei2Wei(cbo.FeeAmountGWei),
+		currency.GWei2Wei(cbo.AmountFeeGWei),
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cancel bet: %w", err)
@@ -491,6 +449,59 @@ func (b *Book) EthereumBalance(ctx context.Context) (wei *big.Int, err error) {
 	}
 
 	return balance, nil
+}
+
+// =============================================================================
+// Helper functions
+
+// CheckBalance pulls and compares the specified balance for a player.
+func (b *Book) CheckBalance(ctx context.Context, expBal *big.Float) error {
+	gotBal, err := b.Balance(ctx)
+	if err != nil {
+		return fmt.Errorf("error getting balance for %s: %w", b.Client().Address().Hex(), err)
+	}
+
+	if gotBal.Cmp(expBal) != 0 {
+		return fmt.Errorf("wrong %s balance, got %v  exp %v", b.Client().Address().Hex(), currency.GWei2Wei(gotBal), currency.GWei2Wei(expBal))
+	}
+
+	return nil
+}
+
+// Sign produces a signature for use with the smart contract call.
+func (b *Book) Sign(betID string, nonce int) ([]byte, error) {
+	String, _ := abi.NewType("string", "", nil)
+	Address, _ := abi.NewType("address", "", nil)
+	Uint, _ := abi.NewType("uint", "", nil)
+
+	arguments := abi.Arguments{
+		{
+			Type: String,
+		},
+		{
+			Type: Address,
+		},
+		{
+			Type: Uint,
+		},
+	}
+
+	bytes, err := arguments.Pack(betID, b.Client().Address(), big.NewInt(int64(nonce)))
+	if err != nil {
+		return nil, fmt.Errorf("arguments pack: %w", err)
+	}
+
+	signature, err := ethereum.SignBytes(bytes, b.Client().PrivateKey())
+	if err != nil {
+		return nil, fmt.Errorf("signing message: %w", err)
+	}
+
+	sig, err := hex.DecodeString(signature[2:])
+	if err != nil {
+		return nil, fmt.Errorf("decoding signature string: %w", err)
+	}
+
+	return sig, nil
 }
 
 // =============================================================================
