@@ -109,6 +109,14 @@ kind-status-engine-api:
 kind-describe-engine-api:
 	kubectl describe pod -l app=engine-api --namespace=engine-api-system
 
+kind-geth-attach:
+	$(eval $@_GETH_POD := $(shell kubectl get --namespace=geth-system pod -l app=geth -o jsonpath="{.items[0].metadata.name}"))
+	kubectl exec -it --namespace=geth-system $($@_GETH_POD) -- geth attach --datadir /ethereum
+
+kind-geth-new-account:
+	$(eval $@_GETH_POD := $(shell kubectl get --namespace=geth-system pod -l app=geth -o jsonpath="{.items[0].metadata.name}"))
+	kubectl exec -it --namespace=geth-system $($@_GETH_POD) -- geth account new --datadir /ethereum
+
 # ==============================================================================
 # Administration
 
@@ -163,14 +171,12 @@ geth-reset:
 
 # This is a JS console environment for making geth related API calls.
 geth-attach:
-	$(eval $@_GETH_POD := $(shell kubectl get --namespace=geth-system pod -l app=geth -o jsonpath="{.items[0].metadata.name}"))
-	kubectl exec -it --namespace=geth-system $($@_GETH_POD) -- geth attach --datadir /ethereum
+	geth attach --datadir zarf/ethereum/
 
 # This will add a new account to the keystore. The account will have a zero
 # balance until you give it some money.
 geth-new-account:
-	$(eval $@_GETH_POD := $(shell kubectl get --namespace=geth-system pod -l app=geth -o jsonpath="{.items[0].metadata.name}"))
-	kubectl exec -it --namespace=geth-system $($@_GETH_POD) -- geth account new --datadir /ethereum
+	geth --datadir zarf/ethereum/ account new
 
 # This will deposit 1 ETH into the two extra accounts from the coinbase account.
 # Do this if you delete the geth folder and start over or if the accounts need money.
