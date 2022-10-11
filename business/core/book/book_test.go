@@ -490,7 +490,7 @@ func Test_CancelBetOwner(t *testing.T) {
 	}
 
 	// *************************************************************************
-	// Check balances
+	// Check balances.
 
 	returnBet := big.NewFloat(0).Sub(bet.placeBet.AmountBetGWei, oneUSD)
 
