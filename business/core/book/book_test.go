@@ -93,7 +93,7 @@ func Test_DepositWithdraw(t *testing.T) {
 	}
 
 	// *************************************************************************
-	// Deposit process.
+	// Deposit process
 
 	// Get the starting balance.
 	startingBalance, err := playerClient.EthereumBalance(ctx)
