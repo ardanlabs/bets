@@ -92,7 +92,7 @@ func Test_DepositWithdraw(t *testing.T) {
 		t.Fatalf("error creating new book for owner: %s", err)
 	}
 
-	// =========================================================================
+	// *************************************************************************
 	// Deposit process
 
 	// Get the starting balance.
@@ -125,7 +125,7 @@ func Test_DepositWithdraw(t *testing.T) {
 		t.Fatalf("expecting final balance to be %d; got %d", expectedBalance, currentBalance)
 	}
 
-	// =========================================================================
+	// *************************************************************************
 	// Withdraw process
 
 	// Perform a withdraw to the player's wallet.
@@ -178,7 +178,7 @@ func placeBet(t *testing.T) bet {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// =========================================================================
+	// *************************************************************************
 	// Establish books for each of the entities involved
 
 	player1Client, err := book.New(ctx, nil, ethereum.NetworkHTTPLocalhost, Player1KeyPath, Player1PassPhrase, contractID)
@@ -201,7 +201,7 @@ func placeBet(t *testing.T) bet {
 		t.Fatalf("error creating new book for moderator: %s", err)
 	}
 
-	// =========================================================================
+	// *************************************************************************
 	// Give player accounts money
 
 	if _, _, err := player1Client.Deposit(ctx, twentyUSD); err != nil {
@@ -212,7 +212,7 @@ func placeBet(t *testing.T) bet {
 		t.Fatalf("error making deposit player 1: %s", err)
 	}
 
-	// =========================================================================
+	// *************************************************************************
 	// Capture signatures
 
 	signatures := make([][]byte, 2)
@@ -227,7 +227,7 @@ func placeBet(t *testing.T) bet {
 		t.Fatalf("signing 2: %s", err)
 	}
 
-	// =========================================================================
+	// *************************************************************************
 	// Place a bet
 
 	expiration := time.Date(2022, time.September, 1, 1, 1, 1, 0, time.UTC)
@@ -242,10 +242,10 @@ func placeBet(t *testing.T) bet {
 		Signatures:    signatures,
 	}
 	if _, _, err := ownerClient.PlaceBet(ctx, betID, placeBet); err != nil {
-		t.Fatalf("error calling PlaceBet: %s", err)
+		t.Fatalf("error calling place bet: %s", err)
 	}
 
-	// =========================================================================
+	// *************************************************************************
 	// Check balances
 
 	expPlayerBal := big.NewFloat(0).Sub(twentyUSD, big.NewFloat(0).Add(placeBet.AmountBetGWei, placeBet.AmountFeeGWei))
@@ -263,7 +263,7 @@ func placeBet(t *testing.T) bet {
 		t.Fatal(err)
 	}
 
-	// =========================================================================
+	// *************************************************************************
 	// Check bet state
 
 	check := book.BetInfo{
@@ -275,7 +275,7 @@ func placeBet(t *testing.T) bet {
 	}
 	checkBetState(t, ctx, ownerClient, betID, check)
 
-	// =========================================================================
+	// *************************************************************************
 	// Get account balances for future tests
 
 	player1Bal, err := player1Client.Balance(ctx)
@@ -288,7 +288,7 @@ func placeBet(t *testing.T) bet {
 		t.Fatalf("error getting balance for player 2: %s", err)
 	}
 
-	// =========================================================================
+	// *************************************************************************
 	// Return values for other tests
 
 	return bet{
@@ -311,7 +311,7 @@ func Test_Reconcile(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// =========================================================================
+	// *************************************************************************
 	// Generate a signature for the call
 
 	signature, err := bet.moderatorClient.Sign(betID, 0)
@@ -319,7 +319,7 @@ func Test_Reconcile(t *testing.T) {
 		t.Fatalf("signing moderator: %s", err)
 	}
 
-	// =========================================================================
+	// *************************************************************************
 	// Reconcile the bet
 
 	rec := book.ReconcileBet{
@@ -329,10 +329,10 @@ func Test_Reconcile(t *testing.T) {
 		Winners:   []string{Player1Address},
 	}
 	if _, _, err := bet.ownerClient.ReconcileBet(ctx, betID, rec); err != nil {
-		t.Fatalf("error calling Reconcile: %s", err)
+		t.Fatalf("error calling reconcile: %s", err)
 	}
 
-	// =========================================================================
+	// *************************************************************************
 	// Check balances
 
 	totalWinnings := big.NewFloat(0).Mul(bet.placeBet.AmountBetGWei, big.NewFloat(2))
@@ -346,7 +346,7 @@ func Test_Reconcile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// =========================================================================
+	// *************************************************************************
 	// Check bet state
 
 	check := book.BetInfo{
@@ -364,7 +364,7 @@ func Test_CancelBetModerator(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// =========================================================================
+	// *************************************************************************
 	// Generate a signature for the call
 
 	signature, err := bet.moderatorClient.Sign(betID, 0)
@@ -372,7 +372,7 @@ func Test_CancelBetModerator(t *testing.T) {
 		t.Fatalf("signing moderator: %s", err)
 	}
 
-	// =========================================================================
+	// *************************************************************************
 	// Cancel the bet
 
 	cbm := book.CancelBetModerator{
@@ -382,10 +382,10 @@ func Test_CancelBetModerator(t *testing.T) {
 		Signature:     signature,
 	}
 	if _, _, err := bet.ownerClient.CancelBetModerator(ctx, betID, cbm); err != nil {
-		t.Fatalf("error calling Reconcile: %s", err)
+		t.Fatalf("error calling cancel bet moderator: %s", err)
 	}
 
-	// =========================================================================
+	// *************************************************************************
 	// Check balances
 
 	returnBet := big.NewFloat(0).Sub(bet.placeBet.AmountBetGWei, oneUSD)
@@ -400,7 +400,68 @@ func Test_CancelBetModerator(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// =========================================================================
+	// *************************************************************************
+	// Check bet state
+
+	check := book.BetInfo{
+		State:         book.StateCancelled,
+		AmountBetGWei: big.NewFloat(0),
+	}
+	checkBetState(t, ctx, bet.ownerClient, betID, check)
+}
+
+// =============================================================================
+
+func Test_CancelBetParticipants(t *testing.T) {
+	bet := placeBet(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// *************************************************************************
+	// Capture signatures
+
+	var err error
+	signatures := make([][]byte, 2)
+
+	signatures[0], err = bet.player1Client.Sign(betID, 1)
+	if err != nil {
+		t.Fatalf("signing 1: %s", err)
+	}
+
+	signatures[1], err = bet.player2Client.Sign(betID, 1)
+	if err != nil {
+		t.Fatalf("signing 2: %s", err)
+	}
+
+	// *************************************************************************
+	// Cancel bet
+
+	cbp := book.CancelBetParticipants{
+		AmountFeeGWei: oneUSD,
+		Nonces:        []*big.Int{big.NewInt(1), big.NewInt(1)},
+		Signatures:    signatures,
+	}
+	if _, _, err := bet.ownerClient.CancelBetParticipants(ctx, betID, cbp); err != nil {
+		t.Fatalf("error calling cancel bet participants: %s", err)
+	}
+
+	// *************************************************************************
+	// Check balances
+
+	returnBet := big.NewFloat(0).Sub(bet.placeBet.AmountBetGWei, oneUSD)
+
+	expBal := big.NewFloat(0).Add(bet.player1Bal, returnBet)
+	if err := bet.player1Client.CheckBalance(ctx, expBal); err != nil {
+		t.Fatal(err)
+	}
+
+	expBal = big.NewFloat(0).Add(bet.player2Bal, returnBet)
+	if err := bet.player2Client.CheckBalance(ctx, expBal); err != nil {
+		t.Fatal(err)
+	}
+
+	// *************************************************************************
 	// Check bet state
 
 	check := book.BetInfo{
