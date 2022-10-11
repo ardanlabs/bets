@@ -473,6 +473,49 @@ func Test_CancelBetParticipants(t *testing.T) {
 
 // =============================================================================
 
+func Test_CancelBetOwner(t *testing.T) {
+	bet := placeBet(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// *************************************************************************
+	// Cancel the bet
+
+	cbo := book.CancelBetOwner{
+		AmountFeeGWei: oneUSD,
+	}
+	if _, _, err := bet.ownerClient.CancelBetOwner(ctx, betID, cbo); err != nil {
+		t.Fatalf("error calling cancel bet owner: %s", err)
+	}
+
+	// *************************************************************************
+	// Check balances
+
+	returnBet := big.NewFloat(0).Sub(bet.placeBet.AmountBetGWei, oneUSD)
+
+	expBal := big.NewFloat(0).Add(bet.player1Bal, returnBet)
+	if err := bet.player1Client.CheckBalance(ctx, expBal); err != nil {
+		t.Fatal(err)
+	}
+
+	expBal = big.NewFloat(0).Add(bet.player2Bal, returnBet)
+	if err := bet.player2Client.CheckBalance(ctx, expBal); err != nil {
+		t.Fatal(err)
+	}
+
+	// *************************************************************************
+	// Check bet state
+
+	check := book.BetInfo{
+		State:         book.StateCancelled,
+		AmountBetGWei: big.NewFloat(0),
+	}
+	checkBetState(t, ctx, bet.ownerClient, betID, check)
+}
+
+// =============================================================================
+
 func deployContract() (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
