@@ -530,7 +530,7 @@ func Test_CancelBetExpired(t *testing.T) {
 	}
 
 	// *************************************************************************
-	// Check balances.
+	// Check balances
 
 	expBal := big.NewFloat(0).Add(bet.player1Bal, bet.placeBet.AmountBetGWei)
 	if err := bet.player1Client.CheckBalance(ctx, expBal); err != nil {
