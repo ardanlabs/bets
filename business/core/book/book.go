@@ -1,4 +1,4 @@
-// Package book represents all the transactions necessary for the game.
+// Package book represents all the transactions necessary for the game
 package book
 
 import (
