@@ -24,16 +24,14 @@ function useEthersConnection() {
   const signer = ethersConnection.signer
 
   // Signer account
-  function setAccount(account: string | undefined) {
+  function setAccount(account: string | null) {
     const newContext = ethersConnection
     newContext.account = account
 
     setEthersConnection(newContext)
   }
   // Account getter.
-  const account = ethersConnection.account
-    ? ethersConnection.account
-    : undefined
+  const account = ethersConnection.account ? ethersConnection.account : null
 
   // Network setter
   function setNetwork(network: object) {

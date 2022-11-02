@@ -15,6 +15,7 @@ import { Network } from '@ethersproject/networks'
 import Dashboard from './routes/Dashboard'
 import BetDetail from './routes/BetDetail'
 import Login from './routes/Login'
+import { WalletProvider } from '@viaprotocol/web3-wallets'
 
 // =============================================================================
 
@@ -93,14 +94,16 @@ function App() {
       style={{ scrollSnapType: 'y mandatory' }}
       onClick={hideDropdowns}
     >
-      <EthersContext.Provider value={getEthersContextDefaultValue()}>
-        <Routes>
-          <Route path="/" element={<Dashboard />}></Route>
-          <Route path="/login" element={<Login />}></Route>
-          <Route path="/bet/:betId" element={<BetDetail />}></Route>
-          <Route path="/wrongNetwork" element={<WrongNetwork />}></Route>
-        </Routes>
-      </EthersContext.Provider>
+      <WalletProvider>
+        <EthersContext.Provider value={getEthersContextDefaultValue()}>
+          <Routes>
+            <Route path="/" element={<Dashboard />}></Route>
+            <Route path="/login" element={<Login />}></Route>
+            <Route path="/bet/:betId" element={<BetDetail />}></Route>
+            <Route path="/wrongNetwork" element={<WrongNetwork />}></Route>
+          </Routes>
+        </EthersContext.Provider>
+      </WalletProvider>
     </div>
   )
 }
