@@ -1,21 +1,21 @@
-// Package book represents all the transactions necessary for the game
+// Package book represents all the transactions necessary for the game.
 package book
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/ardanlabs/bets/business/contract/go/book"
-	"github.com/ardanlabs/bets/foundation/web"
 	"github.com/ardanlabs/ethereum"
 	"github.com/ardanlabs/ethereum/currency"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"go.uber.org/zap"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // These constants define the different bet states.
@@ -37,32 +37,28 @@ const (
 // Book represents a bank that allows for the reconciling of a game and
 // information about account balances.
 type Book struct {
-	logger     *zap.SugaredLogger
 	contractID string
-	ethereum   *ethereum.Ethereum
+	ethereum   *ethereum.Client
 	contract   *book.Book
 }
 
 // New returns a new bank with the ability to manage the game money.
-func New(ctx context.Context, logger *zap.SugaredLogger, network string, keyPath string, passPhrase string, contractID string) (*Book, error) {
-	ethereum, err := ethereum.New(ctx, network, keyPath, passPhrase)
+func New(ctx context.Context, backend ethereum.Backend, privateKey *ecdsa.PrivateKey, contractID string) (*Book, error) {
+	clt, err := ethereum.NewClient(backend, privateKey)
 	if err != nil {
-		return nil, fmt.Errorf("network connect: %w", err)
+		return nil, fmt.Errorf("client: %w", err)
 	}
 
-	contract, err := book.NewBook(common.HexToAddress(contractID), ethereum.RawClient())
+	contract, err := book.NewBook(common.HexToAddress(contractID), clt.Backend)
 	if err != nil {
 		return nil, fmt.Errorf("new contract: %w", err)
 	}
 
 	b := Book{
-		logger:     logger,
 		contractID: contractID,
-		ethereum:   ethereum,
+		ethereum:   clt,
 		contract:   contract,
 	}
-
-	b.log(ctx, "new bank", "network", network, "contractid", contractID)
 
 	return &b, nil
 }
@@ -73,7 +69,7 @@ func (b *Book) ContractID() string {
 }
 
 // Client returns the underlying contract client.
-func (b *Book) Client() *ethereum.Ethereum {
+func (b *Book) Client() *ethereum.Client {
 	return b.ethereum
 }
 
@@ -92,9 +88,6 @@ func (b *Book) Drain(ctx context.Context) (*types.Transaction, *types.Receipt, e
 	if err != nil {
 		return nil, nil, fmt.Errorf("drain: %w", err)
 	}
-
-	b.log(ctx, "drain started")
-	defer b.log(ctx, "drain completed")
 
 	receipt, err := b.ethereum.WaitMined(ctx, tx)
 	if err != nil {
@@ -117,8 +110,6 @@ func (b *Book) AccountBalance(ctx context.Context, accountID string) (BalanceGWe
 		return nil, fmt.Errorf("account balance: %w", err)
 	}
 
-	b.log(ctx, "account balance", "accountid", accountID, "balance", balance)
-
 	return currency.Wei2GWei(balance), nil
 }
 
@@ -133,8 +124,6 @@ func (b *Book) Nonce(ctx context.Context, accountID string) (*big.Int, error) {
 	if err != nil {
 		return nil, fmt.Errorf("account balance: %w", err)
 	}
-
-	b.log(ctx, "get nonce", "accountid", b.ethereum.Address().String(), "nonce", nonce)
 
 	return nonce, nil
 }
@@ -151,20 +140,16 @@ func (b *Book) BetDetails(ctx context.Context, betID string) (BetInfo, error) {
 		return BetInfo{}, fmt.Errorf("account balance: %w", err)
 	}
 
-	participants := make([]string, len(bbi.Participants))
-	for i, participant := range bbi.Participants {
-		participants[i] = participant.Hex()
-	}
+	participants := make([]common.Address, len(bbi.Participants))
+	copy(participants, bbi.Participants)
 
 	betInfo := BetInfo{
 		State:         int(bbi.State),
 		Participants:  participants,
-		Moderator:     bbi.Moderator.Hex(),
+		Moderator:     bbi.Moderator,
 		AmountBetGWei: currency.Wei2GWei(bbi.AmountBetWei),
 		Expiration:    time.Unix(bbi.Expiration.Int64(), 0),
 	}
-
-	b.log(ctx, "bet details", "betid", betID, "details", betInfo)
 
 	return betInfo, nil
 }
@@ -177,9 +162,7 @@ func (b *Book) PlaceBet(ctx context.Context, betID string, pb PlaceBet) (*types.
 	}
 
 	var participants []common.Address
-	for _, participant := range pb.Participants {
-		participants = append(participants, common.HexToAddress(participant))
-	}
+	participants = append(participants, pb.Participants...)
 
 	tranOpts, err := b.ethereum.NewTransactOpts(ctx, gasLimitPlaceBet, big.NewFloat(0))
 	if err != nil {
@@ -192,7 +175,7 @@ func (b *Book) PlaceBet(ctx context.Context, betID string, pb PlaceBet) (*types.
 		currency.GWei2Wei(pb.AmountBetGWei),
 		currency.GWei2Wei(pb.AmountFeeGWei),
 		new(big.Int).SetInt64(pb.Expiration.Unix()),
-		common.HexToAddress(pb.Moderator),
+		pb.Moderator,
 		participants,
 		pb.Nonces,
 		pb.Signatures,
@@ -200,9 +183,6 @@ func (b *Book) PlaceBet(ctx context.Context, betID string, pb PlaceBet) (*types.
 	if err != nil {
 		return nil, nil, fmt.Errorf("place bet: %w", err)
 	}
-
-	b.log(ctx, "place bet started", "betID", betID)
-	defer b.log(ctx, "place bet completed", "betID", betID)
 
 	receipt, err := b.ethereum.WaitMined(ctx, tx)
 	if err != nil {
@@ -220,9 +200,7 @@ func (b *Book) ReconcileBet(ctx context.Context, betID string, rb ReconcileBet) 
 	}
 
 	var winners []common.Address
-	for _, winner := range rb.Winners {
-		winners = append(winners, common.HexToAddress(winner))
-	}
+	winners = append(winners, rb.Winners...)
 
 	tranOpts, err := b.ethereum.NewTransactOpts(ctx, 1600000, big.NewFloat(0))
 	if err != nil {
@@ -239,9 +217,6 @@ func (b *Book) ReconcileBet(ctx context.Context, betID string, rb ReconcileBet) 
 	if err != nil {
 		return nil, nil, fmt.Errorf("reconcile bet: %w", err)
 	}
-
-	b.log(ctx, "reconcile bet started", "betID", betID)
-	defer b.log(ctx, "reconcile bet completed", "betID", betID)
 
 	receipt, err := b.ethereum.WaitMined(ctx, tx)
 	if err != nil {
@@ -273,9 +248,6 @@ func (b *Book) CancelBetModerator(ctx context.Context, betID string, cbm CancelB
 		return nil, nil, fmt.Errorf("cancel bet: %w", err)
 	}
 
-	b.log(ctx, "cancel bet moderator started", "betID", betID)
-	defer b.log(ctx, "cancel bet moderator completed", "betID", betID)
-
 	receipt, err := b.ethereum.WaitMined(ctx, tx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("wait mined: %w", err)
@@ -306,9 +278,6 @@ func (b *Book) CancelBetParticipants(ctx context.Context, betID string, cbp Canc
 		return nil, nil, fmt.Errorf("cancel bet: %w", err)
 	}
 
-	b.log(ctx, "cancel bet participants started", "betID", betID)
-	defer b.log(ctx, "cancel bet participants completed", "betID", betID)
-
 	receipt, err := b.ethereum.WaitMined(ctx, tx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("wait mined: %w", err)
@@ -337,9 +306,6 @@ func (b *Book) CancelBetOwner(ctx context.Context, betID string, cbo CancelBetOw
 		return nil, nil, fmt.Errorf("cancel bet: %w", err)
 	}
 
-	b.log(ctx, "cancel bet owner started", "betID", betID)
-	defer b.log(ctx, "cancel bet owner completed", "betID", betID)
-
 	receipt, err := b.ethereum.WaitMined(ctx, tx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("wait mined: %w", err)
@@ -367,9 +333,6 @@ func (b *Book) CancelBetExpired(ctx context.Context, betID string) (*types.Trans
 		return nil, nil, fmt.Errorf("cancel bet: %w", err)
 	}
 
-	b.log(ctx, "cancel bet expired started", "betID", betID)
-	defer b.log(ctx, "cancel bet expired completed", "betID", betID)
-
 	receipt, err := b.ethereum.WaitMined(ctx, tx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("wait mined: %w", err)
@@ -390,8 +353,6 @@ func (b *Book) Balance(ctx context.Context) (GWei *big.Float, err error) {
 		return nil, fmt.Errorf("account balance: %w", err)
 	}
 
-	b.log(ctx, "balance", "accountid", b.ethereum.Address().String(), "wei", wei)
-
 	return currency.Wei2GWei(wei), nil
 }
 
@@ -406,9 +367,6 @@ func (b *Book) Deposit(ctx context.Context, amountGWei *big.Float) (*types.Trans
 	if err != nil {
 		return nil, nil, fmt.Errorf("deposit: %w", err)
 	}
-
-	b.log(ctx, "deposit started", "accountid", b.ethereum.Address().String(), "amountGWei", amountGWei)
-	defer b.log(ctx, "deposit completed")
 
 	receipt, err := b.ethereum.WaitMined(ctx, tx)
 	if err != nil {
@@ -429,9 +387,6 @@ func (b *Book) Withdraw(ctx context.Context) (*types.Transaction, *types.Receipt
 	if err != nil {
 		return nil, nil, fmt.Errorf("withdraw: %w", err)
 	}
-
-	b.log(ctx, "withdraw started", "accountid", b.ethereum.Address().String())
-	defer b.log(ctx, "withdraw completed")
 
 	receipt, err := b.ethereum.WaitMined(ctx, tx)
 	if err != nil {
@@ -491,6 +446,8 @@ func (b *Book) Sign(betID string, nonce int) ([]byte, error) {
 		return nil, fmt.Errorf("arguments pack: %w", err)
 	}
 
+	bytes = crypto.Keccak256(bytes)
+
 	signature, err := ethereum.SignBytes(bytes, b.Client().PrivateKey())
 	if err != nil {
 		return nil, fmt.Errorf("signing message: %w", err)
@@ -502,16 +459,4 @@ func (b *Book) Sign(betID string, nonce int) ([]byte, error) {
 	}
 
 	return sig, nil
-}
-
-// =============================================================================
-
-// log will write to the configured log if a traceid exists in the context.
-func (b *Book) log(ctx context.Context, msg string, keysAndvalues ...interface{}) {
-	if b.logger == nil {
-		return
-	}
-
-	keysAndvalues = append(keysAndvalues, "traceid", web.GetTraceID(ctx))
-	b.logger.Infow(msg, keysAndvalues...)
 }

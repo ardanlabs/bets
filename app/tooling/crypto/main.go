@@ -10,8 +10,11 @@ import (
 	"time"
 
 	"github.com/ardanlabs/bets/app/tooling/crypto/commands"
+	scbook "github.com/ardanlabs/bets/business/contract/go/book"
 	"github.com/ardanlabs/bets/business/core/book"
+	"github.com/ardanlabs/ethereum"
 	"github.com/ardanlabs/ethereum/currency"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -61,16 +64,27 @@ func run() error {
 	// =========================================================================
 	// Construct the converted for ETH to USD conversions.
 
-	converter, err := currency.NewConverter(args.CoinMarketCapKey)
+	converter, err := currency.NewConverter(scbook.BookMetaData.ABI, args.CoinMarketCapKey)
 	if err != nil {
-		converter = currency.NewDefaultConverter()
+		converter = currency.NewDefaultConverter(scbook.BookMetaData.ABI)
 	}
 	oneETHToUSD, oneUSDToETH := converter.Values()
 
 	// =========================================================================
 	// Construct the bank API.
 
-	book, err := book.New(ctx, nil, args.Network, keyFile, args.PassPhrase, args.ContractID)
+	backend, err := ethereum.CreateDialedBackend(ctx, args.Network)
+	if err != nil {
+		return err
+	}
+	defer backend.Close()
+
+	privateKey, err := ethereum.PrivateKeyByKeyFile(keyFile, args.PassPhrase)
+	if err != nil {
+		return err
+	}
+
+	book, err := book.New(ctx, backend, privateKey, args.ContractID)
 	if err != nil {
 		return err
 	}
@@ -99,7 +113,7 @@ func run() error {
 	}
 
 	if _, exists := flags["w"]; exists {
-		return commands.Wallet(ctx, converter, book.Client(), args.Address)
+		return commands.Wallet(ctx, converter, book.Client(), common.HexToAddress(args.Address))
 	}
 	if _, exists := flags["d"]; exists {
 		return commands.Deploy(ctx, converter, book.Client())
