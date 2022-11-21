@@ -20,7 +20,6 @@ var (
 	oneUSD    = big.NewFloat(662_833.00)
 	tenUSD    = big.NewFloat(0).Mul(oneUSD, big.NewFloat(10))
 	twentyUSD = big.NewFloat(0).Mul(oneUSD, big.NewFloat(20))
-	fiftyUSD  = big.NewFloat(0).Mul(oneUSD, big.NewFloat(50))
 )
 
 // We need a string for the bet id.
@@ -560,8 +559,6 @@ func deployContract() (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	backend.Commit()
-
 	fmt.Println("Deploying Contract ...")
 	defer fmt.Println("Deployed")
 
@@ -575,7 +572,7 @@ func deployContract() (string, error) {
 }
 
 func smartContract(ctx context.Context) (string, error) {
-	tranOpts, err := ownerClt.NewTransactOpts(ctx, 5_000_000, big.NewFloat(0))
+	tranOpts, err := ownerClt.NewTransactOpts(ctx, 10_000_000, big.NewFloat(0))
 	if err != nil {
 		return "", err
 	}

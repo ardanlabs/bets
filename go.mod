@@ -3,9 +3,9 @@ module github.com/ardanlabs/bets
 go 1.18
 
 require (
-	github.com/ardanlabs/conf/v3 v3.1.2
+	github.com/ardanlabs/conf/v3 v3.1.3
 	github.com/ardanlabs/darwin v1.4.0
-	github.com/ardanlabs/ethereum v0.11.0
+	github.com/ardanlabs/ethereum v0.15.0
 	github.com/dimfeld/httptreemux/v5 v5.5.0
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/go-playground/locales v0.14.0
